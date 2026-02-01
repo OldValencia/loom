@@ -2,7 +2,6 @@ package io.aipanel.app.config;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 
 import java.util.List;
@@ -10,7 +9,6 @@ import java.util.Map;
 
 @Getter
 @Setter
-@Component
 public class AiConfiguration {
 
     private List<AiConfig> configurations;

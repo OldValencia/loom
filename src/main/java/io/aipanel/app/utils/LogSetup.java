@@ -1,11 +1,15 @@
 package io.aipanel.app.utils;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class LogSetup {
 
     public static final String APP_DIR = System.getProperty("user.home") + File.separator + ".aipanel";

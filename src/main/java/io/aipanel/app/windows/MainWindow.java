@@ -6,7 +6,6 @@ import io.aipanel.app.ui.CefWebView;
 import io.aipanel.app.ui.Theme;
 import io.aipanel.app.ui.topbar.TopBarArea;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Controller;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,7 +13,6 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.RoundRectangle2D;
 
-@Controller
 @RequiredArgsConstructor
 public class MainWindow {
 

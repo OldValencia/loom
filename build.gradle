@@ -27,7 +27,6 @@ tasks.withType(JavaCompile).configureEach {
 
 application {
     mainClass = 'io.aipanel.app.AIPanelApplication'
-
     applicationDefaultJvmArgs = [
             '-XX:-OmitStackTraceInFastThrow',
 
@@ -43,20 +42,28 @@ application {
 
             '--add-opens=java.desktop/sun.awt=ALL-UNNAMED',
             '--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED',
-            '--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED'
+            '--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED',
+
+            '-Xms20m', '-Xmx64m', '-Xss256k',
+            '-XX:MaxMetaspaceSize=32m', '-XX:+UseSerialGC'
     ]
 }
 
 jlink {
-    options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
+    options = [
+            '--strip-debug',
+            '--compress', '2',
+            '--no-header-files',
+            '--no-man-pages',
+            '--strip-native-commands'
+    ]
     launcher {
         name = 'app'
     }
-    addOptions('--add-modules', 'java.desktop,java.naming,java.management,java.sql')
+    addOptions('--add-modules', 'java.desktop')
 }
 
 dependencies {
-    implementation 'org.springframework:spring-context:7.0.3'
     implementation 'me.friwi:jcefmaven:141.0.10'
     implementation 'org.yaml:snakeyaml:2.2'
     implementation 'com.github.weisj:jsvg:2.0.0'
