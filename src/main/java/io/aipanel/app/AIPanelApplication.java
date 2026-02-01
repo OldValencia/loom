@@ -1,7 +1,7 @@
 package io.aipanel.app;
 
 import io.aipanel.app.config.AppConfig;
-import io.aipanel.app.controllers.MainController;
+import io.aipanel.app.windows.MainWindow;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import javax.swing.*;
@@ -17,8 +17,8 @@ public class AIPanelApplication {
         System.setProperty("sun.awt.exception.handler", AwtExceptionHandler.class.getName());
 
         springContext = new AnnotationConfigApplicationContext();
-        springContext.register(AppConfig.class);  // твоя конфигурация
-        springContext.scan("io.aipanel.app");     // пакет с компонентами (если есть @Component)
+        springContext.register(AppConfig.class);
+        springContext.scan("io.aipanel.app");
         springContext.refresh();
 
         var manager = new CookieManager();
@@ -26,8 +26,8 @@ public class AIPanelApplication {
         CookieHandler.setDefault(manager);
 
         SwingUtilities.invokeLater(() -> {
-            MainController controller = springContext.getBean(MainController.class);
-            controller.showWindow();
+            var mainWindow = springContext.getBean(MainWindow.class);
+            mainWindow.showWindow();
         });
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
