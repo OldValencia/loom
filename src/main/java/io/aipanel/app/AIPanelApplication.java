@@ -5,17 +5,21 @@ import io.aipanel.app.config.AppPreferences;
 import io.aipanel.app.utils.LogSetup;
 import io.aipanel.app.windows.MainWindow;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.net.CookieHandler;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 
-@Slf4j
 public class AIPanelApplication {
+
+    private static Logger log;
 
     public static void main(String[] args) {
         LogSetup.init();
+        log = LoggerFactory.getLogger(AIPanelApplication.class);
 
         System.setProperty("sun.awt.exception.handler", AwtExceptionHandler.class.getName());
 
@@ -41,6 +45,7 @@ public class AIPanelApplication {
         CookieHandler.setDefault(manager);
     }
 
+    @Slf4j
     public static class AwtExceptionHandler {
         public void handle(Throwable t) {
             log.error("Critical AWT Error", t);
