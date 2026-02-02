@@ -30,7 +30,6 @@ public class AiDock extends JPanel {
     private static final int PAD = 12;
     private static final int GAP = 8;
     private static final int ITEM_MARGIN = 6;
-    private static final int DRAG_THRESHOLD = 4;
 
     private final List<DockItem> dockItems = new ArrayList<>();
     private final CefWebView cefWebView;
@@ -135,7 +134,6 @@ public class AiDock extends JPanel {
 
     private void setupMouseListeners() {
         var ma = new MouseAdapter() {
-
             @Override
             public void mouseEntered(MouseEvent e) {
                 if (!isDragging) {
@@ -162,25 +160,13 @@ public class AiDock extends JPanel {
 
             @Override
             public void mousePressed(MouseEvent e) {
-                if (SwingUtilities.isLeftMouseButton(e)) {
-                    dragStartX = e.getX();
-                    isDragging = false;
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    startDrag(e.getX());
                 }
             }
 
             @Override
             public void mouseDragged(MouseEvent e) {
-                if (!SwingUtilities.isLeftMouseButton(e)) {
-                    return;
-                }
-
-                int dx = Math.abs(e.getX() - dragStartX);
-
-                if (!isDragging && dx >= DRAG_THRESHOLD) {
-                    isDragging = true;
-                    startDrag(dragStartX);
-                }
-
                 if (isDragging) {
                     updateDrag(e.getX());
                 }
@@ -188,18 +174,18 @@ public class AiDock extends JPanel {
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                if (!SwingUtilities.isLeftMouseButton(e)) {
-                    return;
-                }
-
-                if (isDragging) {
+                if (e.getButton() == MouseEvent.BUTTON1 && isDragging) {
                     endDrag();
-                } else {
+                }
+            }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1 && !isDragging) {
                     handleMouseClick(e.getX());
                 }
             }
         };
-
         addMouseListener(ma);
         addMouseMotionListener(ma);
     }

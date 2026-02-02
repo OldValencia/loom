@@ -1,6 +1,8 @@
 package io.aipanel.app.ui;
 
 import io.aipanel.app.config.AppPreferences;
+import io.aipanel.app.ui.cef.components.DimOverlay;
+import io.aipanel.app.ui.cef.components.FadeOverlay;
 import io.aipanel.app.utils.LogSetup;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -15,10 +17,7 @@ import org.cef.browser.CefMessageRouter;
 import org.cef.callback.CefContextMenuParams;
 import org.cef.callback.CefMenuModel;
 import org.cef.callback.CefQueryCallback;
-import org.cef.handler.CefContextMenuHandlerAdapter;
-import org.cef.handler.CefKeyboardHandlerAdapter;
-import org.cef.handler.CefLoadHandlerAdapter;
-import org.cef.handler.CefMessageRouterHandlerAdapter;
+import org.cef.handler.*;
 import org.cef.misc.BoolRef;
 import org.cef.network.CefCookieManager;
 
@@ -31,13 +30,11 @@ import java.util.function.Consumer;
 @Slf4j
 public class CefWebView extends JPanel {
 
-    // Paths
     private static final String BASE_DIR = new File(System.getProperty("user.home"), ".aipanel").getAbsolutePath();
     private static final String INSTALL_DIR = new File(BASE_DIR, "jcef-bundle").getAbsolutePath();
     private static final String CACHE_DIR = new File(BASE_DIR, "cache").getAbsolutePath();
     private static final String CEF_LOG_FILE = new File(LogSetup.LOGS_DIR, "cef.log").getAbsolutePath();
 
-    // JS Injection
     private static final String ZOOM_JS = """
             document.addEventListener('wheel', function(e) {
                if(e.ctrlKey) {
@@ -54,13 +51,38 @@ public class CefWebView extends JPanel {
     private Consumer<Double> zoomCallback;
 
     private final AppPreferences appPreferences;
+    private final FadeOverlay fadeOverlay;
+    private final DimOverlay dimOverlay;
 
     public CefWebView(String startUrl, AppPreferences appPreferences) {
         this.appPreferences = appPreferences;
 
-        setLayout(new BorderLayout());
+        setLayout(null);
         setBackground(Theme.BG_DEEP);
+
+        fadeOverlay = new FadeOverlay();
+        dimOverlay = new DimOverlay();
+
         initCef(startUrl);
+
+        add(fadeOverlay);
+        add(dimOverlay);
+    }
+
+    @Override
+    public void doLayout() {
+        super.doLayout();
+        int w = getWidth();
+        int h = getHeight();
+
+        if (fadeOverlay != null) fadeOverlay.setBounds(0, 0, w, h);
+        if (dimOverlay != null) dimOverlay.setBounds(0, 0, w, h);
+
+        for (var comp : getComponents()) {
+            if (comp != fadeOverlay && comp != dimOverlay) {
+                comp.setBounds(0, 0, w, h);
+            }
+        }
     }
 
     public void setZoomEnabled(boolean enabled) {
@@ -75,7 +97,17 @@ public class CefWebView extends JPanel {
     }
 
     public void loadUrl(String url) {
-        if (browser != null) browser.loadURL(url);
+        if (browser != null) {
+            fadeOverlay.fadeInThen(() -> browser.loadURL(url));
+        }
+    }
+
+    public void showDim() {
+        dimOverlay.show();
+    }
+
+    public void hideDim() {
+        dimOverlay.hide();
     }
 
     public void clearCookies() {
@@ -100,7 +132,6 @@ public class CefWebView extends JPanel {
 
     private void initCef(String startUrl) {
         try {
-            // 1. Configure CefApp
             var builder = new CefAppBuilder();
             builder.setInstallDir(new File(INSTALL_DIR));
             configureSettings(builder);
@@ -108,21 +139,19 @@ public class CefWebView extends JPanel {
             var app = builder.build();
             client = app.createClient();
 
-            // 2. Attach Handlers
             setupZoomHandler();
             setupKeyboardHandler();
             setupLoadHandler();
             setupContextMenuHandler();
+            setupNotificationHandler();
 
-            // 3. Create Browser
             browser = client.createBrowser(startUrl, false, false);
-            add(browser.getUIComponent(), BorderLayout.CENTER);
+            add(browser.getUIComponent(), 0);
 
-            // 4. Register Shutdown Hook
             Runtime.getRuntime().addShutdownHook(new Thread(this::performShutdown));
 
             revalidate();
-            log.info("JCEF Initialized successfully. Install dir: {}", INSTALL_DIR);
+            log.info("JCEF initialized successfully");
         } catch (IOException | UnsupportedPlatformException | InterruptedException | CefInitializationException e) {
             log.error("Failed to initialize JCEF", e);
         }
@@ -149,7 +178,7 @@ public class CefWebView extends JPanel {
                         var delta = Double.parseDouble(request.split(":")[1]);
                         changeZoom(delta < 0);
                     } catch (Exception e) {
-                        log.error("Can't parse request in a zoom handler", e);
+                        log.error("Can't parse zoom request", e);
                     }
                     return true;
                 }
@@ -202,7 +231,6 @@ public class CefWebView extends JPanel {
     }
 
     private void setupContextMenuHandler() {
-        // Disable default context menu
         client.addContextMenuHandler(new CefContextMenuHandlerAdapter() {
             @Override
             public void onBeforeContextMenu(CefBrowser browser, CefFrame frame, CefContextMenuParams params, CefMenuModel model) {
@@ -211,19 +239,54 @@ public class CefWebView extends JPanel {
         });
     }
 
+    private void setupNotificationHandler() {
+        client.addDisplayHandler(new CefDisplayHandlerAdapter() {
+            @Override
+            public boolean onConsoleMessage(CefBrowser browser, org.cef.CefSettings.LogSeverity level, String message, String source, int line) {
+                if (message.contains("Notification") || message.contains("notification")) {
+                    log.info("Notification detected: {}", message);
+                    showSystemNotification("AI Panel", message);
+                }
+                return false;
+            }
+        });
+    }
+
+    private void showSystemNotification(String title, String message) {
+        if (SystemTray.isSupported()) {
+            try {
+                var tray = SystemTray.getSystemTray();
+                var image = Toolkit.getDefaultToolkit().createImage("icon.png");
+                var trayIcon = new TrayIcon(image, "AI Panel");
+                trayIcon.setImageAutoSize(true);
+                trayIcon.setToolTip("AI Panel");
+
+                if (tray.getTrayIcons().length == 0) {
+                    tray.add(trayIcon);
+                } else {
+                    trayIcon = tray.getTrayIcons()[0];
+                }
+
+                trayIcon.displayMessage(title, message, TrayIcon.MessageType.INFO);
+            } catch (Exception e) {
+                log.error("Failed to show system notification", e);
+            }
+        }
+    }
+
     private void performShutdown() {
-        log.info("Shutting down JCEF...");
+        log.info("Shutting down JCEF");
         try {
             CefApp.getInstance().dispose();
         } catch (Exception e) {
-            log.error("Exception while shutting down JCEF", e);
+            log.error("Exception during JCEF shutdown", e);
         }
     }
 
     private void changeZoom(boolean increase) {
         double step = 0.5;
         double newLevel = appPreferences.getLastZoomValue() + (increase ? step : -step);
-        newLevel = Math.max(-3.0, Math.min(4.0, newLevel)); // Clamp -3 to 4
+        newLevel = Math.max(-3.0, Math.min(4.0, newLevel));
         setZoomInternal(newLevel);
     }
 

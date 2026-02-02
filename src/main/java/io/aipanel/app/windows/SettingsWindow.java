@@ -1,5 +1,6 @@
 package io.aipanel.app.windows;
 
+import io.aipanel.app.ui.CefWebView;
 import io.aipanel.app.ui.settings.SettingsPanel;
 import lombok.RequiredArgsConstructor;
 
@@ -15,6 +16,7 @@ public class SettingsWindow {
 
     private final JFrame owner;
     private final SettingsPanel settingsPanel;
+    private final CefWebView cefWebView;
     private JWindow window;
 
     private float progress = 0f;
@@ -27,12 +29,14 @@ public class SettingsWindow {
         }
         targetProgress = 1f;
         window.setVisible(true);
+        cefWebView.showDim();
         animTimer.start();
     }
 
     public void close() {
         if (window == null) return;
         targetProgress = 0f;
+        cefWebView.hideDim();
         animTimer.start();
     }
 
