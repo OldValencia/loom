@@ -49,7 +49,7 @@ public class MainWindow {
         settingsPanel.setOnClearCookies(cefWebView::clearCookies);
         settingsPanel.setOnZoomEnabledChanged(cefWebView::setZoomEnabled);
         settingsPanel.setOnImportCookies(this::importCookies);
-        settingsWindow = new SettingsWindow(frame, settingsPanel, cefWebView);
+        settingsWindow = new SettingsWindow(frame, cefWebView);
 
         var topBarArea = new TopBarArea(aiConfiguration, cefWebView, frame, settingsWindow, appPreferences, this::toggleSettings, this::hideWindow);
         root.add(topBarArea.createTopBar(), BorderLayout.NORTH);
@@ -93,7 +93,7 @@ public class MainWindow {
             startUrl = "https://chatgpt.com";
         }
 
-        return new CefWebView(startUrl, appPreferences);
+        return new CefWebView(startUrl);
     }
 
     private JFrame buildMainFrame() {

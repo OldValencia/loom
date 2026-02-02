@@ -1,63 +1,69 @@
 package io.aipanel.app.ui.cef.components;
 
-import io.aipanel.app.ui.Theme;
-
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
 
-public class DimOverlay extends JPanel {
+public class DimOverlay extends JComponent {
 
-    private float alpha = 0f;
-    private float targetAlpha = 0f;
-    private Timer dimTimer;
+    private float alpha = 0.0f;
+    private static final float MAX_ALPHA = 0.6f;
+    private Timer timer;
 
     public DimOverlay() {
-        setOpaque(false);
         setVisible(false);
-
-        dimTimer = new Timer(16, e -> tick());
+        setOpaque(false);
+        setFocusable(false);
+        addMouseListener(new MouseAdapter() {
+        });
     }
 
-    public void show() {
-        targetAlpha = 0.35f;
-        setVisible(true);
-        if(dimTimer == null) {
-            dimTimer = new Timer(16, e -> tick());
-        }
-        dimTimer.start();
+    public void fadeIn() {
+        if (isVisible() && alpha >= MAX_ALPHA) return;
+
+        stopTimer();
+        setVisible(true); // Включаем компонент
+
+        timer = new Timer(20, e -> {
+            alpha += 0.05f;
+            if (alpha >= MAX_ALPHA) {
+                alpha = MAX_ALPHA;
+                stopTimer();
+            }
+            repaint();
+        });
+        timer.start();
     }
 
-    public void hide() {
-        targetAlpha = 0f;
-        if(dimTimer == null) {
-            dimTimer = new Timer(16, e -> tick());
-        }
-        dimTimer.start();
-    }
+    public void fadeOut() {
+        if (!isVisible()) return;
 
-    private void tick() {
-        float diff = targetAlpha - alpha;
-
-        if (Math.abs(diff) < 0.01f) {
-            alpha = targetAlpha;
-            dimTimer.stop();
-
-            if (alpha <= 0f) {
+        stopTimer();
+        timer = new Timer(20, e -> {
+            alpha -= 0.05f;
+            if (alpha <= 0.0f) {
+                alpha = 0.0f;
+                stopTimer();
                 setVisible(false);
             }
-        } else {
-            alpha += diff * 0.22f;
-        }
+            repaint();
+        });
+        timer.start();
+    }
 
-        repaint();
+    private void stopTimer() {
+        if (timer != null && timer.isRunning()) {
+            timer.stop();
+        }
     }
 
     @Override
-    protected void paintComponent(Graphics g0) {
-        if (alpha <= 0.01f) return;
-
-        var g = (Graphics2D) g0;
-        g.setColor(Theme.withAlpha(new Color(0, 0, 0), alpha));
-        g.fillRect(0, 0, getWidth(), getHeight());
+    protected void paintComponent(Graphics g) {
+        if (alpha > 0) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setColor(new Color(0, 0, 0, (int) (alpha * 255)));
+            g2.fillRect(0, 0, getWidth(), getHeight());
+            g2.dispose();
+        }
     }
 }

@@ -5,59 +5,44 @@ import io.aipanel.app.ui.Theme;
 import javax.swing.*;
 import java.awt.*;
 
-public class FadeOverlay extends JPanel {
+public class FadeOverlay extends JComponent {
 
-    private float alpha = 0f;
-    private float targetAlpha = 0f;
-    private final Timer fadeTimer;
-    private Runnable onFadeComplete;
+    private float alpha = 1.0f;
+    private Timer timer;
+    private final boolean isDark;
 
     public FadeOverlay() {
+        this.isDark = true;
         setOpaque(false);
-        setVisible(false);
-
-        fadeTimer = new Timer(16, e -> tick());
-    }
-
-    public void fadeInThen(Runnable action) {
-        this.onFadeComplete = action;
-        targetAlpha = 1f;
         setVisible(true);
-        fadeTimer.start();
+        addMouseListener(new java.awt.event.MouseAdapter() {});
     }
 
-    public void fadeOut() {
-        targetAlpha = 0f;
-        fadeTimer.start();
-    }
+    public void startFadeOut() {
+        if (timer != null && timer.isRunning()) return;
 
-    private void tick() {
-        float diff = targetAlpha - alpha;
-
-        if (Math.abs(diff) < 0.02f) {
-            alpha = targetAlpha;
-            fadeTimer.stop();
-
-            if (alpha >= 1f && onFadeComplete != null) {
-                onFadeComplete.run();
-                onFadeComplete = null;
-                fadeOut();
-            } else if (alpha <= 0f) {
+        timer = new Timer(30, e -> {
+            alpha -= 0.05f;
+            if (alpha <= 0.0f) {
+                alpha = 0.0f;
+                timer.stop();
                 setVisible(false);
             }
-        } else {
-            alpha += diff * 0.25f;
-        }
-
-        repaint();
+            repaint();
+        });
+        Timer delay = new Timer(500, e -> timer.start());
+        delay.setRepeats(false);
+        delay.start();
     }
 
     @Override
-    protected void paintComponent(Graphics g0) {
-        if (alpha <= 0.01f) return;
-
-        var g = (Graphics2D) g0;
-        g.setColor(Theme.withAlpha(Theme.BG_DEEP, alpha));
-        g.fillRect(0, 0, getWidth(), getHeight());
+    protected void paintComponent(Graphics g) {
+        if (alpha > 0.01f) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+            g2.setColor(Theme.BG_DEEP);
+            g2.fillRect(0, 0, getWidth(), getHeight());
+            g2.dispose();
+        }
     }
 }
