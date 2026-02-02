@@ -19,10 +19,10 @@ public class BrowserCookieImporter {
     public record BrowserProfile(String browser, String profileName, Path cookiePath) {
 
         @Override
-            public String toString() {
-                return browser + " - " + profileName;
-            }
+        public String toString() {
+            return browser + " - " + profileName;
         }
+    }
 
     public static List<BrowserProfile> detectBrowsers() {
         var profiles = new ArrayList<BrowserProfile>();
@@ -66,8 +66,8 @@ public class BrowserCookieImporter {
         }
 
         if (Files.exists(firefoxDir)) {
-            try {
-                Files.list(firefoxDir)
+            try (var firefoxList = Files.list(firefoxDir)) {
+                firefoxList
                         .filter(Files::isDirectory)
                         .forEach(profileDir -> {
                             var cookieFile = profileDir.resolve("cookies.sqlite");
@@ -110,7 +110,7 @@ public class BrowserCookieImporter {
             log.info("Imported cookies from {} to {}", profile, targetFile);
             return true;
         } catch (IOException e) {
-            log.error("Failed to import cookies from " + profile, e);
+            log.error("Failed to import cookies from {}", profile, e);
             return false;
         }
     }

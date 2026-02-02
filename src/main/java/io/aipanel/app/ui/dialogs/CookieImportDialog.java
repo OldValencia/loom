@@ -10,11 +10,8 @@ import java.nio.file.Paths;
 
 public class CookieImportDialog extends JDialog {
 
-    private final JFrame owner;
-
     public CookieImportDialog(JFrame owner) {
         super(owner, "Import Cookies", true);
-        this.owner = owner;
 
         setUndecorated(true);
         setAlwaysOnTop(true);
@@ -46,8 +43,8 @@ public class CookieImportDialog extends JDialog {
         descLabel.setFont(Theme.FONT_SETTINGS);
         descLabel.setForeground(Theme.TEXT_SECONDARY);
         descLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        contentPanel.add(descLabel);
 
+        contentPanel.add(descLabel);
         contentPanel.add(Box.createVerticalStrut(16));
 
         var profiles = BrowserCookieImporter.detectBrowsers();

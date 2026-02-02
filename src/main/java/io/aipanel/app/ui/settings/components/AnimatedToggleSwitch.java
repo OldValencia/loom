@@ -1,6 +1,7 @@
 package io.aipanel.app.ui.settings.components;
 
 import io.aipanel.app.ui.Theme;
+import lombok.Setter;
 
 import javax.swing.*;
 import java.awt.*;
@@ -16,9 +17,10 @@ public class AnimatedToggleSwitch extends JPanel {
     private static final int THUMB_SIZE = 22;
     private static final float ANIM_SPEED = 0.25f;
 
-    private boolean enabled = false;
-    private float progress = 0f;
+    private boolean enabled;
+    private float progress;
     private final Timer animTimer;
+    @Setter
     private Consumer<Boolean> onChange;
 
     public AnimatedToggleSwitch(boolean initialState) {
@@ -40,19 +42,11 @@ public class AnimatedToggleSwitch extends JPanel {
         });
     }
 
-    public void setOnChange(Consumer<Boolean> onChange) {
-        this.onChange = onChange;
-    }
-
     public void setEnabled(boolean enabled) {
         if (this.enabled != enabled) {
             this.enabled = enabled;
             animTimer.start();
         }
-    }
-
-    public boolean isEnabled() {
-        return enabled;
     }
 
     private void toggle() {

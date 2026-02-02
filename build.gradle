@@ -28,7 +28,19 @@ tasks.withType(JavaCompile).configureEach {
 application {
     mainClass = 'io.aipanel.app.AIPanelApplication'
     applicationDefaultJvmArgs = [
-            '-XX:-OmitStackTraceInFastThrow',
+            '-Xms16m',
+            '-Xmx48m',
+            '-Xss192k',
+            '-XX:MaxMetaspaceSize=24m',
+            '-XX:CompressedClassSpaceSize=8m',
+
+            '-XX:+UseSerialGC',
+            '-XX:MinHeapFreeRatio=10',
+            '-XX:MaxHeapFreeRatio=20',
+
+            '-XX:+TieredCompilation',
+            '-XX:TieredStopAtLevel=1',
+            '-XX:-UsePerfData',
 
             '-Dsun.java2d.d3d=false',
             '-Dsun.java2d.ddoffscreen=false',
@@ -42,10 +54,7 @@ application {
 
             '--add-opens=java.desktop/sun.awt=ALL-UNNAMED',
             '--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED',
-            '--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED',
-
-            '-Xms20m', '-Xmx64m', '-Xss256k',
-            '-XX:MaxMetaspaceSize=32m', '-XX:+UseSerialGC'
+            '--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED'
     ]
 }
 
@@ -55,7 +64,8 @@ jlink {
             '--compress', '2',
             '--no-header-files',
             '--no-man-pages',
-            '--strip-native-commands'
+            '--strip-native-commands',
+            '--dedup-legal-notices=error-if-not-same-content'
     ]
     launcher {
         name = 'AI Panel'
@@ -72,15 +82,85 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:2.0.17'
     implementation 'ch.qos.logback:logback-classic:1.5.27'
 
-    // Lombok
     compileOnly "org.projectlombok:lombok:$lombokVersion"
     annotationProcessor "org.projectlombok:lombok:$lombokVersion"
 
-    // JUnit
     testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
 }
 
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+}
+
+tasks.register('packageWindows') {
+    group = 'distribution'
+    description = 'Package Windows executable with installer'
+    dependsOn 'jlinkZip'
+
+    doLast {
+        def packageDir = file("${buildDir}/packages")
+        packageDir.mkdirs()
+
+        exec {
+            commandLine 'jpackage',
+                    '--type', 'exe',
+                    '--name', 'AI Panel',
+                    '--app-version', version,
+                    '--vendor', 'AI Panel',
+                    '--runtime-image', "${buildDir}/image",
+                    '--input', "${buildDir}/libs",
+                    '--main-jar', "aipanel-${version}.jar",
+                    '--main-class', 'io.aipanel.app.AIPanelApplication',
+                    '--win-dir-chooser',
+                    '--win-menu',
+                    '--win-shortcut',
+                    '--dest', packageDir
+        }
+
+        println "Windows installer created: ${packageDir}/AI Panel-${version}.exe"
+    }
+}
+
+tasks.register('packageMac') {
+    group = 'distribution'
+    description = 'Package macOS application with DMG installer'
+    dependsOn 'jlinkZip'
+
+    doLast {
+        def packageDir = file("${buildDir}/packages")
+        packageDir.mkdirs()
+
+        exec {
+            commandLine 'jpackage',
+                    '--type', 'dmg',
+                    '--name', 'AI Panel',
+                    '--app-version', version,
+                    '--vendor', 'AI Panel',
+                    '--runtime-image', "${buildDir}/image",
+                    '--input', "${buildDir}/libs",
+                    '--main-jar', "aipanel-${version}.jar",
+                    '--main-class', 'io.aipanel.app.AIPanelApplication',
+                    '--mac-package-identifier', 'io.aipanel.app',
+                    '--dest', packageDir
+        }
+
+        println "macOS installer created: ${packageDir}/AI Panel-${version}.dmg"
+    }
+}
+
+tasks.register('packageAll') {
+    group = 'distribution'
+    description = 'Package for current platform'
+
+    doFirst {
+        def os = org.gradle.internal.os.OperatingSystem.current()
+        if (os.isWindows()) {
+            dependsOn 'packageWindows'
+        } else if (os.isMacOsX()) {
+            dependsOn 'packageMac'
+        } else {
+            throw new GradleException("Unsupported platform: ${os}")
+        }
+    }
 }

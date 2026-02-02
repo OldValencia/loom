@@ -64,9 +64,9 @@ public class TopBarArea {
                 var frameLocation = frame.getLocation();
                 frame.setLocation(frameLocation.x + dx, frameLocation.y + dy);
 
-//                if (settingsWindow.isOpen()) {
-//                    settingsWindow.setPosition(dx, dy);
-//                }
+                if (settingsWindow.isOpen()) {
+                    settingsWindow.dragWindow(dx, dy);
+                }
             }
         });
     }

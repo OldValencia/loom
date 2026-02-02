@@ -21,31 +21,15 @@ public class SettingsPanel extends JPanel {
     @Setter
     private Runnable onImportCookies;
 
-    private final AnimatedToggleSwitch rememberToggle;
-    private final AnimatedToggleSwitch zoomToggle;
-
     public SettingsPanel(AppPreferences appPreferences) {
         setOpaque(true);
         setBackground(Theme.BG_BAR);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
 
-        addSection("General");
-
-        rememberToggle = new AnimatedToggleSwitch(appPreferences.isRememberLastAi());
-        rememberToggle.setOnChange(val -> {
-            if (onRememberLastAiChanged != null) onRememberLastAiChanged.accept(val);
-        });
-        addSettingRow("Remember last AI", rememberToggle);
-
+        buildSection("General", appPreferences.isRememberLastAi(), onRememberLastAiChanged, "Remember last used AI");
         add(Box.createVerticalStrut(16));
-        addSection("Browser");
-
-        zoomToggle = new AnimatedToggleSwitch(appPreferences.isZoomEnabled());
-        zoomToggle.setOnChange(val -> {
-            if (onZoomEnabledChanged != null) onZoomEnabledChanged.accept(val);
-        });
-        addSettingRow("Zoom enabled", zoomToggle);
+        buildSection("Browser", appPreferences.isZoomEnabled(), onZoomEnabledChanged, "Zoom enabled");
 
         add(Box.createVerticalStrut(12));
 
@@ -67,6 +51,16 @@ public class SettingsPanel extends JPanel {
         buttonsRow.add(importCookiesBtn);
 
         add(buttonsRow);
+    }
+
+    private void buildSection(String General, boolean appPreferences, Consumer<Boolean> onChanged, String rowString) {
+        addSection(General);
+
+        var rememberToggle = new AnimatedToggleSwitch(appPreferences);
+        rememberToggle.setOnChange(val -> {
+            if (onChanged != null) onChanged.accept(val);
+        });
+        addSettingRow(rowString, rememberToggle);
     }
 
     private void addSection(String title) {

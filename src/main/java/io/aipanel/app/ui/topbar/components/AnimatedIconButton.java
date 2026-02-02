@@ -16,7 +16,6 @@ public class AnimatedIconButton extends JPanel {
 
     private final String icon;
     private final Color hoverColor;
-    private final Runnable action;
 
     private float progress = 0f;
     private boolean hovered = false;
@@ -25,7 +24,6 @@ public class AnimatedIconButton extends JPanel {
     public AnimatedIconButton(String icon, Color hoverColor, Runnable action) {
         this.icon = icon;
         this.hoverColor = hoverColor;
-        this.action = action;
 
         setPreferredSize(new Dimension(SIZE, SIZE));
         setMinimumSize(new Dimension(SIZE, SIZE));
@@ -56,8 +54,8 @@ public class AnimatedIconButton extends JPanel {
     }
 
     private void tick() {
-        float target = hovered ? 1f : 0f;
-        float diff = target - progress;
+        var target = hovered ? 1f : 0f;
+        var diff = target - progress;
 
         if (Math.abs(diff) < 0.035f) {
             progress = target;
@@ -79,11 +77,11 @@ public class AnimatedIconButton extends JPanel {
         var g = (Graphics2D) g0;
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        int cx = getWidth() / 2;
-        int cy = getHeight() / 2;
+        var cx = getWidth() / 2;
+        var cy = getHeight() / 2;
 
         if (progress > 0.02f) {
-            float alpha = progress * 0.6f;
+            var alpha = progress * 0.6f;
             g.setColor(Theme.withAlpha(Theme.BTN_RING, alpha));
             g.setStroke(new BasicStroke(1.3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g.draw(new Ellipse2D.Float(cx - RING_R, cy - RING_R, RING_R * 2, RING_R * 2));
@@ -93,8 +91,8 @@ public class AnimatedIconButton extends JPanel {
         g.setFont(Theme.FONT_RIGHT_TOP_BAR_AREA);
 
         var fm = g.getFontMetrics();
-        int textX = cx - fm.stringWidth(icon) / 2;
-        int textY = cy + (fm.getAscent() - fm.getDescent()) / 2;
+        var textX = cx - fm.stringWidth(icon) / 2;
+        var textY = cy + (fm.getAscent() - fm.getDescent()) / 2;
         g.drawString(icon, textX, textY);
     }
 }

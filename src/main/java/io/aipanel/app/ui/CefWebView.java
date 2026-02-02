@@ -1,8 +1,7 @@
 package io.aipanel.app.ui;
 
 import io.aipanel.app.config.AiConfiguration;
-import io.aipanel.app.ui.cef.components.DimOverlay;
-import io.aipanel.app.ui.cef.components.FadeOverlay;
+import io.aipanel.app.config.AppPreferences;
 import io.aipanel.app.utils.LogSetup;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -51,35 +50,28 @@ public class CefWebView extends JPanel {
             }, {passive: false});
             """;
 
-    private CefClient client;
-    private CefBrowser browser;
-    private AiConfiguration.AiConfig currentConfig;
-
-    private double currentZoomLevel = 0.0;
-    private boolean zoomEnabled = true;
-
-    // Слои для оверлеев
-    private final JLayeredPane layeredPane;
-    private final DimOverlay dimOverlay;
-    private FadeOverlay fadeOverlay; // Создается и добавляется динамически
-
     @Setter
     private Consumer<Double> zoomCallback;
 
-    public CefWebView(String startUrl) {
+    private CefClient client;
+    private CefBrowser browser;
+
+    private final AppPreferences appPreferences;
+    private double currentZoomLevel;
+
+    private final JLayeredPane layeredPane;
+
+    public CefWebView(String startUrl, AppPreferences appPreferences) {
+        this.appPreferences = appPreferences;
+        this.currentZoomLevel = appPreferences.getLastZoomValue();
+
         setLayout(new BorderLayout());
         setBackground(Theme.BG_DEEP);
 
-        // Инициализируем JLayeredPane
         layeredPane = new JLayeredPane();
-        layeredPane.setLayout(null); // Абсолютное позиционирование, мы будем менять размеры вручную
+        layeredPane.setLayout(null);
         add(layeredPane, BorderLayout.CENTER);
 
-        // Затемнение
-        dimOverlay = new DimOverlay();
-        layeredPane.add(dimOverlay, JLayeredPane.PALETTE_LAYER); // Слой палитры (выше дефолтного)
-
-        // Слушатель изменения размеров окна, чтобы оверлеи растягивались
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
@@ -91,100 +83,48 @@ public class CefWebView extends JPanel {
         initCef(startUrl);
     }
 
+    public void setCurrentConfig(AiConfiguration.AiConfig currentConfig) {
+        loadUrl(currentConfig.url());
+    }
+
     private void updateLayerBounds() {
-        int w = getWidth();
-        int h = getHeight();
-
-        // Растягиваем браузер
         if (browser != null) {
-            Component browserUI = browser.getUIComponent();
-            browserUI.setBounds(0, 0, w, h);
+            var browserUI = browser.getUIComponent();
+            browserUI.setBounds(0, 0, getWidth(), getHeight());
         }
-
-        // Растягиваем оверлеи
-        if (dimOverlay != null) dimOverlay.setBounds(0, 0, w, h);
-        if (fadeOverlay != null) fadeOverlay.setBounds(0, 0, w, h);
 
         layeredPane.revalidate();
         layeredPane.repaint();
     }
 
-    public void setCurrentConfig(AiConfiguration.AiConfig config) {
-        this.currentConfig = config;
-    }
-
-    // === Управление затемнением (для SettingsWindow) ===
-    public void showDim() {
-        dimOverlay.fadeIn();
-    }
-
-    public void hideDim() {
-        dimOverlay.fadeOut();
-    }
-
-    // === Сеттер для FadeOverlay (вызывается извне или создаем внутри) ===
-    public void setFadeOverlay(FadeOverlay overlay) {
-        this.fadeOverlay = overlay;
-        // Добавляем на самый высокий слой (MODAL)
-        layeredPane.add(fadeOverlay, JLayeredPane.MODAL_LAYER);
-        updateLayerBounds();
-    }
-
-    public void restart() {
-        if (browser != null) {
-            String url = (currentConfig != null) ? currentConfig.url() : browser.getURL();
-
-            // Удаляем компонент браузера из слоя
-            layeredPane.remove(browser.getUIComponent());
-
-            browser.close(true);
-            browser = null;
-
-            if (client != null) {
-                browser = client.createBrowser(url, false, false);
-                // Добавляем браузер на самый нижний слой
-                Component browserUI = browser.getUIComponent();
-                layeredPane.add(browserUI, JLayeredPane.DEFAULT_LAYER);
-            }
-
-            updateLayerBounds(); // Принудительно обновляем размеры
-
-            if (fadeOverlay != null) {
-                fadeOverlay.setVisible(true);
-                fadeOverlay.startFadeOut();
-            }
-        }
-    }
-
-    // ... smartClean, deleteDirectory остаются без изменений ...
     private void smartClean() {
-        // (код очистки такой же, как был)
-        try {
-            File bundleDir = new File(INSTALL_DIR);
-            if (bundleDir.exists()) {
-                Files.walk(bundleDir.toPath())
-                        .filter(p -> p.toFile().getName().equals("locales") && p.toFile().isDirectory())
+        var bundleDir = new File(INSTALL_DIR);
+        if (bundleDir.exists()) {
+            try (var walkStream = Files.walk(bundleDir.toPath())) {
+                walkStream.filter(p -> p.toFile().getName().equals("locales") && p.toFile().isDirectory())
                         .findFirst()
                         .ifPresent(localesPath -> {
-                            File[] files = localesPath.toFile().listFiles();
+                            var files = localesPath.toFile().listFiles();
                             if (files != null) {
-                                for (File f : files) {
-                                    String name = f.getName();
-                                    if (!name.equals("en-US.pak") && !name.equals("ru.pak")) {
+                                for (var f : files) {
+                                    var name = f.getName();
+                                    if (!name.equals("en-US.pak")) {
                                         f.delete();
                                     }
                                 }
                             }
                         });
+            } catch (Exception e) {
+                log.error("Can't delete locales", e);
             }
-        } catch (Exception ignored) {}
+        }
 
-        File cache = new File(CACHE_DIR);
+        var cache = new File(CACHE_DIR);
         if (cache.exists()) {
-            File[] files = cache.listFiles();
+            var files = cache.listFiles();
             if (files != null) {
-                for (File f : files) {
-                    String name = f.getName();
+                for (var f : files) {
+                    var name = f.getName();
                     if (name.equals("Cache") || name.equals("Code Cache") ||
                             name.equals("GPUCache") || name.equals("ScriptCache")) {
                         deleteDirectory(f);
@@ -196,9 +136,11 @@ public class CefWebView extends JPanel {
 
     private void deleteDirectory(File dir) {
         if (dir.isDirectory()) {
-            File[] entries = dir.listFiles();
+            var entries = dir.listFiles();
             if (entries != null) {
-                for (File entry : entries) deleteDirectory(entry);
+                for (var entry : entries) {
+                    deleteDirectory(entry);
+                }
             }
         }
         dir.delete();
@@ -220,16 +162,24 @@ public class CefWebView extends JPanel {
 
             browser = client.createBrowser(startUrl, false, false);
 
-            // Добавляем браузер в нижний слой
-            Component browserUI = browser.getUIComponent();
+            var browserUI = browser.getUIComponent();
             layeredPane.add(browserUI, JLayeredPane.DEFAULT_LAYER);
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                try { CefApp.getInstance().dispose(); } catch (Exception ignored) {}
+                try {
+                    CefApp.getInstance().dispose();
+                } catch (Exception ignored) {
+                }
             }));
 
-            // Первичный апдейт размеров (хотя окно еще мб 0x0)
-            updateLayerBounds();
+            SwingUtilities.invokeLater(() -> {
+                updateLayerBounds();
+                if (browser != null) {
+                    browser.setZoomLevel(currentZoomLevel);
+                    updateZoomDisplay(currentZoomLevel);
+                }
+            });
+
             log.info("JCEF Initialized");
 
         } catch (IOException | UnsupportedPlatformException | InterruptedException | CefInitializationException e) {
@@ -238,7 +188,6 @@ public class CefWebView extends JPanel {
     }
 
     private void configureSettings(CefAppBuilder builder) {
-        // (код настроек без изменений)
         var settings = builder.getCefSettings();
         settings.windowless_rendering_enabled = false;
         settings.cache_path = CACHE_DIR;
@@ -248,17 +197,18 @@ public class CefWebView extends JPanel {
         settings.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     }
 
-    // ... Handlers (Zoom, Keyboard, ContextMenu) без изменений ...
     private void setupZoomHandler() {
         var msgRouter = CefMessageRouter.create();
         msgRouter.addHandler(new CefMessageRouterHandlerAdapter() {
             @Override
             public boolean onQuery(CefBrowser browser, CefFrame frame, long queryId, String request, boolean persistent, CefQueryCallback callback) {
-                if (request.startsWith("zoom_scroll:") && zoomEnabled) {
+                if (request.startsWith("zoom_scroll:") && appPreferences.isZoomEnabled()) {
                     try {
                         var delta = Double.parseDouble(request.split(":")[1]);
                         changeZoom(delta < 0);
-                    } catch (Exception ignored) {}
+                    } catch (Exception e) {
+                        log.error("Error while trying to handle zoom/scroll request", e);
+                    }
                     return true;
                 }
                 return false;
@@ -271,12 +221,29 @@ public class CefWebView extends JPanel {
         client.addKeyboardHandler(new CefKeyboardHandlerAdapter() {
             @Override
             public boolean onPreKeyEvent(CefBrowser browser, CefKeyEvent event, BoolRef is_keyboard_shortcut) {
-                if (!zoomEnabled || (event.modifiers & 2) == 0) return false;
-                boolean isPressed = event.type == CefKeyEvent.EventType.KEYEVENT_RAWKEYDOWN;
+                if (!appPreferences.isZoomEnabled() || (event.modifiers & 2) == 0) {
+                    return false;
+                }
+                var isPressed = event.type == CefKeyEvent.EventType.KEYEVENT_RAWKEYDOWN;
                 int code = event.windows_key_code;
-                if (code == 187 || code == 61 || code == 107) { if (isPressed) changeZoom(true); return true; }
-                if (code == 189 || code == 45 || code == 109) { if (isPressed) changeZoom(false); return true; }
-                if (code == 48 || code == 96) { if (isPressed) resetZoom(); return true; }
+                if (code == 187 || code == 61 || code == 107) {
+                    if (isPressed) {
+                        changeZoom(true);
+                    }
+                    return true;
+                }
+                if (code == 189 || code == 45 || code == 109) {
+                    if (isPressed) {
+                        changeZoom(false);
+                    }
+                    return true;
+                }
+                if (code == 48 || code == 96) {
+                    if (isPressed) {
+                        resetZoom();
+                    }
+                    return true;
+                }
                 return false;
             }
         });
@@ -298,26 +265,20 @@ public class CefWebView extends JPanel {
                 if (frame.isMain()) {
                     browser.executeJavaScript(ZOOM_JS, frame.getURL(), 0);
                     browser.setZoomLevel(currentZoomLevel);
-                    if (fadeOverlay != null) {
-                        SwingUtilities.invokeLater(() -> fadeOverlay.startFadeOut());
-                    }
                 }
             }
         });
     }
 
-    // ... Публичные API методы (те же) ...
     public void setZoomEnabled(boolean enabled) {
-        this.zoomEnabled = enabled;
-        if (!enabled) resetZoom();
+        appPreferences.setZoomEnabled(enabled);
+        if (!enabled) {
+            resetZoom();
+        }
     }
 
     public void resetZoom() {
         setZoomInternal(0.0);
-    }
-
-    public void loadUrl(String url) {
-        if (browser != null) browser.loadURL(url);
     }
 
     public void clearCookies() {
@@ -325,33 +286,49 @@ public class CefWebView extends JPanel {
     }
 
     public void shutdown(Runnable onComplete) {
-        CefCookieManager.getGlobalManager().flushStore(new org.cef.callback.CefCompletionCallback() {
-            @Override
-            public void onComplete() {
-                dispose();
-                onComplete.run();
-            }
+        CefCookieManager.getGlobalManager().flushStore(() -> {
+            dispose();
+            onComplete.run();
         });
     }
 
     public void dispose() {
-        if (browser != null) browser.close(true);
-        if (client != null) client.dispose();
+        if (browser != null) {
+            browser.close(true);
+        }
+        if (client != null) {
+            client.dispose();
+        }
+    }
+
+    private void loadUrl(String url) {
+        if (browser != null) {
+            browser.loadURL(url);
+        }
     }
 
     private void changeZoom(boolean increase) {
-        double step = 0.5;
-        double newLevel = currentZoomLevel + (increase ? step : -step);
+        var step = 0.5;
+        var newLevel = currentZoomLevel + (increase ? step : -step);
         newLevel = Math.max(-3.0, Math.min(4.0, newLevel));
         setZoomInternal(newLevel);
     }
 
     private void setZoomInternal(double level) {
         this.currentZoomLevel = level;
-        if (browser != null) browser.setZoomLevel(level);
+        appPreferences.setLastZoomValue(level);
+
+        if (browser != null) {
+            browser.setZoomLevel(level);
+        }
+
+        updateZoomDisplay(level);
+    }
+
+    private void updateZoomDisplay(double level) {
         if (zoomCallback != null) {
-            double percentage = Math.pow(1.2, level) * 100;
-            long displayVal = Math.round(percentage / 5.0) * 5;
+            var percentage = Math.pow(1.2, level) * 100;
+            var displayVal = Math.round(percentage / 5.0) * 5;
             zoomCallback.accept((double) displayVal);
         }
     }
