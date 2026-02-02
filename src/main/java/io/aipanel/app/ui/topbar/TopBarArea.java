@@ -22,6 +22,7 @@ public class TopBarArea {
     private final SettingsWindow settingsWindow;
     private final AppPreferences appPreferences;
     private final Runnable onSettingsToggle;
+    private final Runnable onHideWindow;
 
     private Point initialClick;
 
@@ -36,7 +37,7 @@ public class TopBarArea {
         var leftTopBarArea = new LeftTopBarArea(aiConfiguration, cefWebView, appPreferences);
         topBarPanel.add(leftTopBarArea.buildLeftArea(), BorderLayout.WEST);
 
-        var rightTopBarArea = new RightTopBarArea(cefWebView, onSettingsToggle);
+        var rightTopBarArea = new RightTopBarArea(cefWebView, onSettingsToggle, onHideWindow);
         topBarPanel.add(rightTopBarArea.buildRightArea(), BorderLayout.EAST);
 
         setupDragging(topBarPanel);

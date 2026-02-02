@@ -15,6 +15,7 @@ class RightTopBarArea {
 
     private final CefWebView cefWebView;
     private final Runnable onSettingsToggle;
+    private final Runnable onHideWindow;
 
     Box buildRightArea() {
         var box = Box.createHorizontalBox();
@@ -27,18 +28,19 @@ class RightTopBarArea {
         gbc.gridy = 0;
         gbc.anchor = GridBagConstraints.CENTER;
 
-        // Zoom
         var zoomButton = new ZoomButton(cefWebView::resetZoom);
         cefWebView.setZoomCallback(zoomButton::updateZoomDisplay);
         gbc.insets = new Insets(0, 0, 0, 15);
         wrapper.add(zoomButton, gbc);
 
-        // Settings Button
+        gbc.gridx++;
+        gbc.insets = new Insets(0, 0, 0, 6);
+        wrapper.add(new AnimatedIconButton("−", Theme.BTN_HOVER_HIDE, onHideWindow), gbc);
+
         gbc.gridx++;
         gbc.insets = new Insets(0, 0, 0, 6);
         wrapper.add(new AnimatedIconButton("⚙", Theme.BTN_HOVER_SETTINGS, onSettingsToggle), gbc);
 
-        // Close Button
         gbc.gridx++;
         gbc.insets = new Insets(0, 0, 0, 0);
         wrapper.add(new AnimatedIconButton("✕", Theme.BTN_HOVER_CLOSE, this::handleClose), gbc);

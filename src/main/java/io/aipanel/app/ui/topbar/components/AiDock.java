@@ -20,16 +20,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class AiDock extends JPanel {
 
     private static final int ICON_SIZE = 24;
     private static final int ITEM_HEIGHT = 32;
-
     private static final int PAD = 12;
     private static final int GAP = 8;
     private static final int ITEM_MARGIN = 6;
+    private static final int DRAG_THRESHOLD = 4;
 
     private final List<DockItem> dockItems = new ArrayList<>();
     private final CefWebView cefWebView;
@@ -41,6 +42,10 @@ public class AiDock extends JPanel {
 
     private int selectedIndex;
 
+    private boolean isDragging = false;
+    private int draggedItemIndex = -1;
+    private int dragStartX = 0;
+
     public AiDock(List<AiConfiguration.AiConfig> configs, CefWebView cefWebView, AppPreferences appPreferences) {
         this.cefWebView = cefWebView;
         this.appPreferences = appPreferences;
@@ -48,12 +53,14 @@ public class AiDock extends JPanel {
         setOpaque(false);
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
+        var orderedConfigs = applyCustomOrder(configs);
+
         var lastUrl = appPreferences.getLastUrl();
         int initialIndex = 0;
 
         if (lastUrl != null) {
-            for (int i = 0; i < configs.size(); i++) {
-                if (configs.get(i).url().equals(lastUrl)) {
+            for (int i = 0; i < orderedConfigs.size(); i++) {
+                if (orderedConfigs.get(i).url().equals(lastUrl)) {
                     initialIndex = i;
                     break;
                 }
@@ -61,13 +68,13 @@ public class AiDock extends JPanel {
         }
         this.selectedIndex = initialIndex;
 
-        for (int i = 0; i < configs.size(); i++) {
-            var item = new DockItem(configs.get(i), i);
+        for (int i = 0; i < orderedConfigs.size(); i++) {
+            var item = new DockItem(orderedConfigs.get(i), i);
             if (i == initialIndex) {
                 item.setSelected(true);
             }
             dockItems.add(item);
-            preloadIcon(configs.get(i));
+            preloadIcon(orderedConfigs.get(i));
         }
 
         animationTimer = new Timer(15, e -> animate());
@@ -82,7 +89,7 @@ public class AiDock extends JPanel {
         SwingUtilities.invokeLater(() -> {
             var topBarComp = SwingUtilities.getAncestorOfClass(GradientPanel.class, this);
             if (topBarComp instanceof GradientPanel topBar) {
-                var cfg = configs.get(selectedIndex);
+                var cfg = orderedConfigs.get(selectedIndex);
                 if (cfg.color() != null) {
                     try {
                         topBar.setAccentColor(Color.decode(cfg.color()));
@@ -94,53 +101,197 @@ public class AiDock extends JPanel {
         });
     }
 
+    private List<AiConfiguration.AiConfig> applyCustomOrder(List<AiConfiguration.AiConfig> configs) {
+        var savedOrder = appPreferences.getAiOrder();
+        if (savedOrder.isEmpty()) {
+            return configs;
+        }
+
+        var ordered = new ArrayList<AiConfiguration.AiConfig>();
+        for (String url : savedOrder) {
+            if (url.startsWith("http")) {
+                configs.stream()
+                        .filter(c -> c.url().equals(url))
+                        .findFirst()
+                        .ifPresent(ordered::add);
+            }
+        }
+
+        for (var config : configs) {
+            if (!ordered.contains(config)) {
+                ordered.add(config);
+            }
+        }
+
+        return ordered;
+    }
+
+    private void saveCurrentOrder() {
+        var urls = dockItems.stream()
+                .map(item -> item.config.url())
+                .collect(Collectors.toList());
+        appPreferences.setAiOrder(urls);
+    }
+
     private void setupMouseListeners() {
         var ma = new MouseAdapter() {
+
             @Override
             public void mouseEntered(MouseEvent e) {
-                animationTimer.start();
+                if (!isDragging) {
+                    animationTimer.start();
+                }
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                for (var item : dockItems) {
-                    item.setHovered(false);
+                if (!isDragging) {
+                    for (var item : dockItems) {
+                        item.setHovered(false);
+                    }
+                    animationTimer.start();
                 }
-                animationTimer.start();
             }
 
             @Override
             public void mouseMoved(MouseEvent e) {
-                handleMouseMove(e.getX());
+                if (!isDragging) {
+                    handleMouseMove(e.getX());
+                }
             }
 
             @Override
-            public void mouseClicked(MouseEvent e) {
-                handleMouseClick(e.getX());
+            public void mousePressed(MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    dragStartX = e.getX();
+                    isDragging = false;
+                }
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (!SwingUtilities.isLeftMouseButton(e)) {
+                    return;
+                }
+
+                int dx = Math.abs(e.getX() - dragStartX);
+
+                if (!isDragging && dx >= DRAG_THRESHOLD) {
+                    isDragging = true;
+                    startDrag(dragStartX);
+                }
+
+                if (isDragging) {
+                    updateDrag(e.getX());
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (!SwingUtilities.isLeftMouseButton(e)) {
+                    return;
+                }
+
+                if (isDragging) {
+                    endDrag();
+                } else {
+                    handleMouseClick(e.getX());
+                }
             }
         };
+
         addMouseListener(ma);
         addMouseMotionListener(ma);
+    }
+
+    private void startDrag(int x) {
+        int itemIndex = getItemAtX(x);
+        if (itemIndex >= 0) {
+            isDragging = true;
+            draggedItemIndex = itemIndex;
+            dragStartX = x;
+            setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+            animationTimer.start();
+        }
+    }
+
+    private void updateDrag(int x) {
+        int targetIndex = getTargetIndexForDrag(x);
+        if (targetIndex >= 0 && targetIndex != draggedItemIndex) {
+            swapItems(draggedItemIndex, targetIndex);
+            draggedItemIndex = targetIndex;
+            animationTimer.start();
+        }
+    }
+
+    private void endDrag() {
+        isDragging = false;
+        draggedItemIndex = -1;
+        setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        saveCurrentOrder();
+        animationTimer.start();
+    }
+
+    private int getItemAtX(int x) {
+        float currentX = 0;
+        var selected = dockItems.get(selectedIndex);
+        if (x >= currentX && x <= currentX + selected.currentWidth) {
+            return selectedIndex;
+        }
+        currentX += selected.currentWidth + ITEM_MARGIN;
+
+        for (int i = 0; i < dockItems.size(); i++) {
+            if (i == selectedIndex) continue;
+            var item = dockItems.get(i);
+            if (item.currentWidth < 1) continue;
+            if (x >= currentX && x <= currentX + item.currentWidth) {
+                return i;
+            }
+            currentX += item.currentWidth + ITEM_MARGIN;
+        }
+        return -1;
+    }
+
+    private int getTargetIndexForDrag(int x) {
+        return getItemAtX(x);
+    }
+
+    private void swapItems(int from, int to) {
+        if (from == to || from < 0 || to < 0 || from >= dockItems.size() || to >= dockItems.size()) {
+            return;
+        }
+
+        var temp = dockItems.get(from);
+        dockItems.set(from, dockItems.get(to));
+        dockItems.set(to, temp);
+
+        for (int i = 0; i < dockItems.size(); i++) {
+            dockItems.get(i).setIndex(i);
+        }
+
+        if (selectedIndex == from) {
+            selectedIndex = to;
+        } else if (selectedIndex == to) {
+            selectedIndex = from;
+        }
     }
 
     private void calculateTargets(boolean isDockHovered) {
         for (var item : dockItems) {
             float targetW;
 
-            if (item.isSelected()) {
-                // Selected: Full width
+            if (isDragging) {
+                targetW = PAD + ICON_SIZE + PAD;
+            } else if (item.isSelected()) {
                 targetW = PAD + ICON_SIZE + GAP + getTextWidth(item.config.name()) + PAD;
             } else {
                 if (isDockHovered) {
                     if (item.isHovered()) {
-                        // Hovered: Full width
                         targetW = PAD + ICON_SIZE + GAP + getTextWidth(item.config.name()) + PAD;
                     } else {
-                        // Visible but not hovered: Icon only
                         targetW = PAD + ICON_SIZE + PAD;
                     }
                 } else {
-                    // Dock not hovered: Hidden
                     targetW = 0f;
                 }
             }
@@ -159,7 +310,7 @@ public class AiDock extends JPanel {
         for (var item : dockItems) {
             var diff = item.targetWidth - item.currentWidth;
             if (Math.abs(diff) > 0.5f) {
-                item.currentWidth += diff * 0.2f; // Interpolation speed
+                item.currentWidth += diff * 0.2f;
                 needsRepaint = true;
                 allDone = false;
             } else {
@@ -175,7 +326,7 @@ public class AiDock extends JPanel {
             } else {
                 repaint();
             }
-        } else if (allDone && !isDockHovered) {
+        } else if (allDone && !isDockHovered && !isDragging) {
             animationTimer.stop();
         }
     }
@@ -194,7 +345,6 @@ public class AiDock extends JPanel {
         float currentX = 0;
         var foundHover = false;
 
-        // 1. Check Selected Item (Always first)
         var selected = dockItems.get(selectedIndex);
         if (x >= currentX && x <= currentX + selected.currentWidth) {
             updateHoverState(selected);
@@ -202,17 +352,12 @@ public class AiDock extends JPanel {
         }
         currentX += selected.currentWidth + ITEM_MARGIN;
 
-        // 2. Check Others
         if (!foundHover) {
             for (int i = 0; i < dockItems.size(); i++) {
-                if (i == selectedIndex) {
-                    continue;
-                }
+                if (i == selectedIndex) continue;
 
                 var item = dockItems.get(i);
-                if (item.currentWidth < 1) {
-                    continue;
-                }
+                if (item.currentWidth < 1) continue;
 
                 if (x >= currentX && x <= currentX + item.currentWidth) {
                     updateHoverState(item);
@@ -245,7 +390,7 @@ public class AiDock extends JPanel {
 
         var selectedItem = dockItems.get(selectedIndex);
         if (x >= currentX && x <= currentX + selectedItem.currentWidth) {
-            return; // Clicked on already selected
+            return;
         }
         currentX += selectedItem.currentWidth + ITEM_MARGIN;
 
@@ -282,7 +427,6 @@ public class AiDock extends JPanel {
                 try {
                     accent = Color.decode(newItem.config.color());
                 } catch (NumberFormatException ignored) {
-                    // Color will be Theme.ACCENT if incorrect format
                 }
             }
             topBar.setAccentColor(accent);
@@ -300,12 +444,10 @@ public class AiDock extends JPanel {
 
         int y = (getHeight() - ITEM_HEIGHT) / 2;
 
-        // 1. Draw Selected
         var selectedItem = dockItems.get(selectedIndex);
         drawDockItem(g, selectedItem, 0, y);
         float currentX = selectedItem.currentWidth + ITEM_MARGIN;
 
-        // 2. Draw Others
         for (int i = 0; i < dockItems.size(); i++) {
             if (i == selectedIndex) continue;
             var item = dockItems.get(i);
@@ -345,7 +487,7 @@ public class AiDock extends JPanel {
             g.drawImage(icon, x + PAD, iconY, ICON_SIZE, ICON_SIZE, null);
         }
 
-        if (w > PAD + ICON_SIZE + PAD) {
+        if (!isDragging && w > PAD + ICON_SIZE + PAD) {
             g.setFont(Theme.FONT_SELECTOR);
             g.setColor(Theme.TEXT_PRIMARY);
 
@@ -412,7 +554,7 @@ public class AiDock extends JPanel {
     @Setter
     private static class DockItem {
         private final AiConfiguration.AiConfig config;
-        private final int index;
+        private int index;
 
         private float currentWidth = 0f;
         private float targetWidth = 0f;

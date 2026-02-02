@@ -13,6 +13,7 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.RoundRectangle2D;
+import java.io.File;
 
 @RequiredArgsConstructor
 public class MainWindow {
@@ -47,9 +48,10 @@ public class MainWindow {
         settingsPanel.setOnRememberLastAiChanged(appPreferences::setRememberLastAi);
         settingsPanel.setOnClearCookies(cefWebView::clearCookies);
         settingsPanel.setOnZoomEnabledChanged(cefWebView::setZoomEnabled);
+        settingsPanel.setOnImportCookies(this::importCookies);
         settingsWindow = new SettingsWindow(frame, settingsPanel);
 
-        var topBarArea = new TopBarArea(aiConfiguration, cefWebView, frame, settingsWindow, appPreferences, this::toggleSettings);
+        var topBarArea = new TopBarArea(aiConfiguration, cefWebView, frame, settingsWindow, appPreferences, this::toggleSettings, this::hideWindow);
         root.add(topBarArea.createTopBar(), BorderLayout.NORTH);
 
         frame.add(root);
@@ -61,6 +63,28 @@ public class MainWindow {
             settingsWindow.close();
         } else {
             settingsWindow.open();
+        }
+    }
+
+    private void hideWindow() {
+        var frame = (JFrame) SwingUtilities.getWindowAncestor(cefWebView);
+        if (frame != null) {
+            frame.setState(JFrame.ICONIFIED);
+        }
+    }
+
+    private void importCookies() {
+        var chooser = new JFileChooser();
+        chooser.setDialogTitle("Select cookies file");
+        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+
+        int result = chooser.showOpenDialog(null);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = chooser.getSelectedFile();
+            JOptionPane.showMessageDialog(null,
+                    "Cookie import from: " + selectedFile.getName() + "\nNot implemented yet.",
+                    "Import Cookies",
+                    JOptionPane.INFORMATION_MESSAGE);
         }
     }
 

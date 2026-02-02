@@ -10,7 +10,7 @@ import java.awt.*;
 public class SettingsWindow {
 
     private static final int TOPBAR_H = 48;
-    private static final int PANEL_HEIGHT = 120;
+    private static final int PANEL_HEIGHT = 225;
     private static final float LERP_SPEED = 0.22f;
 
     private final JFrame owner;
