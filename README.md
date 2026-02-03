@@ -1,6 +1,18 @@
-# AI Panel
+# Loom
 
 A modern, lightweight desktop application that provides unified access to multiple AI chat services through a sleek, always-on-top interface.
+
+<img src="docs/icon.png" alt="Loom Icon" width="400px"/>
+
+## Support
+
+If this project helps you, consider supporting it:
+- [Buy Me a Coffee](https://buymeacoffee.com/oldvalencia)
+- [Ko-Fi](https://ko-fi.com/oldvalencia)
+
+Also
+- Issues: [GitHub Issues](https://github.com/OldValencia/ai-panel/issues)
+- Discussions: [GitHub Discussions](https://github.com/OldValencia/ai-panel/discussions)
 
 ## Features
 
@@ -29,7 +41,6 @@ A modern, lightweight desktop application that provides unified access to multip
 ### 🛠️ Advanced Features
 - **Zoom Control** - Per-AI zoom settings persist across sessions
 - **Session Persistence** - Remembers last visited AI, zoom level, and icon order
-- **Cookie Management** - Auto-import from Chrome, Firefox, Edge
 - **Settings Panel** - Easy configuration with animated toggles
 - **Clean UI** - No clutter, context menus disabled
 
@@ -38,26 +49,26 @@ A modern, lightweight desktop application that provides unified access to multip
 - **Java 21** - Modern Java with optimized runtime
 - **Native Look** - Platform-specific optimizations
 - **Smart Cleanup** - Automatic cache and locale management
-- **Settings Persistence** - All preferences saved to `~/.aipanel/settings.properties`
+- **Settings Persistence** - All preferences saved to `~/.loom/settings.properties`
 
 ## Screenshots
 
 ### Application interface
-![AI Panel Interface](docs/application_interface.png)
+![Loom Interface](docs/application_interface.png)
 ### Application settings
-![AI Panel Settings](docs/application_settings.png)
+![Loom Settings](docs/application_settings.png)
 
 ## Installation
 
 ### Windows
-1. Download `AI-Panel-Setup-0.0.4.exe` from [Releases](https://github.com/OldValencia/ai-panel/releases)
+1. Download `Loom-Setup-0.0.4.exe` from [Releases](https://github.com/OldValencia/ai-panel/releases)
 2. Run the installer
 3. Launch from Start Menu or Desktop shortcut
 
 ### macOS
-1. Download `AI-Panel-0.0.4.dmg` from [Releases](https://github.com/OldValencia/ai-panel/releases)
+1. Download `Loom-0.0.4.dmg` from [Releases](https://github.com/OldValencia/ai-panel/releases)
 2. Open the DMG file
-3. Drag **AI Panel** to Applications folder
+3. Drag **Loom** to Applications folder
 4. Launch from Applications
 
 ### Linux
@@ -97,9 +108,8 @@ Access via the gear icon (⚙) in the top-right corner:
 **Browser**
 - **Zoom enabled** - Enable/disable zoom controls (zoom level persists when enabled)
 - **Clear cookies** - Remove all stored cookies and session data
-- **Import cookies** - Import existing cookies from Chrome/Firefox/Edge
 
-**Note**: All settings are automatically saved to `~/.aipanel/settings.properties` and persist across application restarts.
+**Note**: All settings are automatically saved to `~/.loom/settings.properties` and persist across application restarts.
 
 ### Persistent Settings
 The application remembers:
@@ -109,7 +119,7 @@ The application remembers:
 - ✅ All settings panel preferences
 
 ### Configuration Files
-- **Location**: `~/.aipanel/`
+- **Location**: `~/.loom/`
 - **Settings**: `settings.properties` (all preferences stored here)
 - **Logs**: `logs/app-YYYY-MM-DD_HH-mm-ss.log`
 - **Cache**: `cache/` (managed automatically)
@@ -128,15 +138,6 @@ configurations:
 Place icon files in `src/main/resources/icons/`.
 
 ## Usage Tips
-
-### Cookie Import
-If you're logged into AI services in your browser:
-1. Open Settings
-2. Click "Import cookies"
-3. Select your browser
-4. Restart the application
-
-Cookies will be automatically imported and you'll stay logged in.
 
 ### Reordering AI Services
 1. Hover over any AI icon in the dock
@@ -192,7 +193,7 @@ applicationDefaultJvmArgs = [
 ./gradlew packageWindows
 ```
 
-Output: `build/packages/AI Panel-0.0.4.exe`
+Output: `build/packages/Loom-0.0.4.exe`
 
 **Features**:
 - Bundled JRE (no Java required)
@@ -205,12 +206,12 @@ Output: `build/packages/AI Panel-0.0.4.exe`
 ```bash
 jpackage \
   --type exe \
-  --name "AI Panel" \
+  --name "Loom" \
   --app-version 0.0.4 \
   --runtime-image build/image \
   --input build/libs \
-  --main-jar aipanel-0.0.4.jar \
-  --main-class io.aipanel.app.AIPanelApplication \
+  --main-jar loom-0.0.4.jar \
+  --main-class io.loom.app.LoomApplication \
   --icon src/main/resources/icon.ico \
   --win-dir-chooser \
   --win-menu \
@@ -224,7 +225,7 @@ jpackage \
 ./gradlew packageMac
 ```
 
-Output: `build/packages/AI Panel-0.0.4.dmg`
+Output: `build/packages/Loom-0.0.4.dmg`
 
 **Features**:
 - Native .app bundle
@@ -236,14 +237,14 @@ Output: `build/packages/AI Panel-0.0.4.dmg`
 ```bash
 jpackage \
   --type dmg \
-  --name "AI Panel" \
+  --name "Loom" \
   --app-version 0.0.4 \
   --runtime-image build/image \
   --input build/libs \
-  --main-jar aipanel-0.0.4.jar \
-  --main-class io.aipanel.app.AIPanelApplication \
+  --main-jar loom-0.0.4.jar \
+  --main-class io.loom.app.LoomApplication \
   --icon src/main/resources/icon.icns \
-  --mac-package-identifier io.aipanel.app
+  --mac-package-identifier io.loom.app
 ```
 
 ### Quick Start
@@ -252,8 +253,8 @@ jpackage \
 ./gradlew clean packageAll
 
 # Output
-# Windows: build/packages/AI Panel-0.0.4.exe
-# macOS: build/packages/AI Panel-0.0.4.dmg
+# Windows: build/packages/Loom-0.0.4.exe
+# macOS: build/packages/Loom-0.0.4.dmg
 ```
 
 ### Icon Requirements
@@ -292,7 +293,7 @@ iconutil -c icns icon.iconset
 ```
 ai-panel/
 ├── src/main/
-│   ├── java/io/aipanel/app/
+│   ├── java/io/loom/app/
 │   │   ├── config/           # Configuration management
 │   │   ├── ui/               # UI components
 │   │   │   ├── dialogs/     # Dialog windows
@@ -338,42 +339,27 @@ ai_order=https://chatgpt.com,https://claude.ai,https://gemini.google.com
 
 ### Application won't start
 - Ensure Java 21+ is installed
-- Check logs in `~/.aipanel/logs/`
+- Check logs in `~/.loom/logs/`
 - Try: `./gradlew clean run`
 
 ### High memory usage
 - Verify JVM flags in launcher
 - Clear cookies and cache via Settings
 
-### Cookies not importing
-- Close source browser completely
-- Run application with admin/sudo
-- Manually copy cookies database
-
 ### Window not appearing
 - Check if already running (one instance only)
-- Try resetting: Delete `~/.aipanel/settings.properties`
+- Try resetting: Delete `~/.loom/settings.properties`
 - Restart system
 
 ### Settings not persisting
-- Check file permissions on `~/.aipanel/settings.properties`
-- Ensure application has write access to `~/.aipanel/` directory
+- Check file permissions on `~/.loom/settings.properties`
+- Ensure application has write access to `~/.loom/` directory
 - Check logs for any persistence errors
 
 ### Zoom level resets
 - Verify "Zoom enabled" is ON in Settings
 - Zoom level only persists when zoom is enabled
 - Check `last_zoom_value` in settings.properties
-
-## Support
-
-If this project helps you, consider supporting it:
-- [Buy Me a Coffee](https://buymeacoffee.com/oldvalencia)
-- [Ko-Fi](https://ko-fi.com/oldvalencia)
-
-Also
-- Issues: [GitHub Issues](https://github.com/OldValencia/ai-panel/issues)
-- Discussions: [GitHub Discussions](https://github.com/OldValencia/ai-panel/discussions)
 
 ## Roadmap
 
