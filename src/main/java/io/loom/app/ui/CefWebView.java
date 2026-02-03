@@ -221,6 +221,7 @@ public class CefWebView extends JPanel {
         settings.cache_path = CACHE_DIR;
         settings.root_cache_path = CACHE_DIR;
         settings.persist_session_cookies = true;
+        settings.command_line_args_disabled = true;
         settings.log_file = CEF_LOG_FILE;
         settings.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     }

@@ -1,7 +1,6 @@
 plugins {
     id 'java'
     id 'application'
-    id 'org.beryx.jlink' version '3.2.1'
 }
 
 group = 'io.loom'
@@ -27,12 +26,47 @@ tasks.withType(JavaCompile).configureEach {
 
 application {
     mainClass = 'io.loom.app.LoomApplication'
-    mainModule = 'io.loom.merged'
-    applicationDefaultJvmArgs = [
+    applicationName = 'Loom'
+}
+
+dependencies {
+    implementation 'me.friwi:jcefmaven:141.0.10'
+    implementation 'org.yaml:snakeyaml:2.2'
+    implementation 'com.github.weisj:jsvg:2.0.0'
+    implementation "com.formdev:flatlaf:$flatLafVersion"
+    implementation "com.formdev:flatlaf-extras:$flatLafVersion"
+    implementation 'org.slf4j:slf4j-api:2.0.17'
+    implementation 'ch.qos.logback:logback-classic:1.5.27'
+
+    compileOnly "org.projectlombok:lombok:$lombokVersion"
+    annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+
+    testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+tasks.register('createInstaller', Exec) {
+    dependsOn installDist
+
+    group = 'distribution'
+    description = 'Builds a standalone installer using jpackage'
+
+    def javaHome = System.getProperty("java.home")
+    def jpackage = "${javaHome}/bin/jpackage"
+    if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+        jpackage += ".exe"
+    }
+
+    def javaOpts = [
             '-Xms16m',
-            '-Xmx48m',
+            '-Xmx512m',
             '-Xss192k',
-            '-XX:MaxMetaspaceSize=24m',
+            '-XX:MaxMetaspaceSize=256m',
+            '-XX:+UseStringDeduplication',
             '-XX:CompressedClassSpaceSize=8m',
 
             '-XX:+UseSerialGC',
@@ -57,103 +91,41 @@ application {
             '--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED',
             '--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED'
     ]
-}
 
-dependencies {
-    implementation 'me.friwi:jcefmaven:141.0.10'
-    implementation 'org.yaml:snakeyaml:2.2'
-    implementation 'com.github.weisj:jsvg:2.0.0'
-    implementation "com.formdev:flatlaf:$flatLafVersion"
-    implementation "com.formdev:flatlaf-extras:$flatLafVersion"
-    implementation 'org.slf4j:slf4j-api:2.0.17'
-    implementation 'ch.qos.logback:logback-classic:1.5.27'
+    def installerType = "deb"
+    def iconPath = "src/main/resources/app-icons/icon.png"
+    def winOptions = []
 
-    compileOnly "org.projectlombok:lombok:$lombokVersion"
-    annotationProcessor "org.projectlombok:lombok:$lombokVersion"
-
-    testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
-}
-
-tasks.withType(Test).configureEach {
-    useJUnitPlatform()
-}
-
-jlink {
-    moduleName = 'io.loom.merged'
-
-    options = [
-            '--strip-debug',
-            '--compress', 'zip-6',
-            '--no-header-files',
-            '--no-man-pages'
-    ]
-
-    mergedModule {
-        requires 'java.desktop'
-        requires 'java.management'
-        requires 'java.naming'
-        requires 'jdk.unsupported'
-    }
-
-    launcher {
-        name = 'Loom'
-        jvmArgs = [
-                '-Xms16m',
-                '-Xmx48m',
-                '-Xss192k',
-                '-XX:MaxMetaspaceSize=24m',
-                '-XX:CompressedClassSpaceSize=16m',
-
-                '-XX:+UseSerialGC',
-                '-XX:MinHeapFreeRatio=10',
-                '-XX:MaxHeapFreeRatio=20',
-
-                '-XX:+TieredCompilation',
-                '-XX:TieredStopAtLevel=1',
-                '-XX:-UsePerfData',
-
-                '-Dsun.java2d.d3d=false',
-                '-Dsun.java2d.ddoffscreen=false',
-                '-Dsun.java2d.noddraw=true',
-                '-Dsun.java2d.uiScale=1.0',
-                '-Djogl.disable.openglcore=false',
-
-                '--add-exports=java.base/java.lang=ALL-UNNAMED',
-                '--add-exports=java.desktop/sun.awt=ALL-UNNAMED',
-                '--add-exports=java.desktop/sun.java2d=ALL-UNNAMED',
-
-                '--add-opens=java.desktop/sun.awt=ALL-UNNAMED',
-                '--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED',
-                '--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED'
+    if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+        installerType = "exe"
+        iconPath = "src/main/resources/app-icons/icon.ico"
+        winOptions = [
+                '--win-dir-chooser',
+                '--win-menu',
+                '--win-shortcut-prompt'
         ]
+    } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+        installerType = "dmg"
+        iconPath = "src/main/resources/app-icons/icon.icns"
     }
 
-    jpackage {
-        skipInstaller = false
-        installerName = "Loom-${version}"
-        outputDir = "build/installer"
-        if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
-            installerType = "exe"
-            imageOptions = ['--icon', 'src/main/resources/app-icons/icon.ico']
-            installerOptions = [
-                    '--win-dir-chooser',
-                    '--win-menu',
-                    '--win-shortcut',
-                    '--win-per-user-install',
-                    '--vendor', 'Loom'
-            ]
-        } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
-            installerType = "dmg"
-            imageOptions = ['--icon', 'src/main/resources/app-icons/icon.icns']
-            installerOptions = [
-                    '--vendor', 'Loom'
-                    // '--mac-sign' // Если есть сертификат разработчика Apple
-            ]
-        } else {
-            // Linux (deb/rpm)
-            installerType = "deb"
-            installerOptions = ['--vendor', 'Loom']
-        }
+    commandLine jpackage,
+            '--type', installerType,
+            '--dest', 'build/installer',
+            '--name', 'Loom',
+            '--vendor', 'OldValencia',
+            '--app-version', version,
+            '--icon', iconPath,
+            '--input', 'build/install/Loom/lib',
+            '--main-jar', "Loom-${version}.jar",
+            '--main-class', application.mainClass.get(),
+            '--add-modules', 'java.desktop,jdk.unsupported,java.logging,java.naming,java.management,jdk.crypto.ec',
+    *winOptions,
+
+    *javaOpts.collectMany { ['--java-options', it] }
+
+    doFirst {
+        println "Building installer using: $jpackage"
+        file('build/installer').mkdirs()
     }
 }
