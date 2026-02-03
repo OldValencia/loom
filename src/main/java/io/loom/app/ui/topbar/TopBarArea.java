@@ -1,10 +1,10 @@
-package io.aipanel.app.ui.topbar;
+package io.loom.app.ui.topbar;
 
-import io.aipanel.app.config.AiConfiguration;
-import io.aipanel.app.config.AppPreferences;
-import io.aipanel.app.ui.CefWebView;
-import io.aipanel.app.ui.topbar.components.GradientPanel;
-import io.aipanel.app.windows.SettingsWindow;
+import io.loom.app.config.AiConfiguration;
+import io.loom.app.config.AppPreferences;
+import io.loom.app.ui.CefWebView;
+import io.loom.app.ui.topbar.components.GradientPanel;
+import io.loom.app.windows.SettingsWindow;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -22,6 +22,7 @@ public class TopBarArea {
     private final SettingsWindow settingsWindow;
     private final AppPreferences appPreferences;
     private final Runnable onSettingsToggle;
+    private final Runnable onHideWindow;
 
     private Point initialClick;
 
@@ -36,7 +37,7 @@ public class TopBarArea {
         var leftTopBarArea = new LeftTopBarArea(aiConfiguration, cefWebView, appPreferences);
         topBarPanel.add(leftTopBarArea.buildLeftArea(), BorderLayout.WEST);
 
-        var rightTopBarArea = new RightTopBarArea(cefWebView, onSettingsToggle);
+        var rightTopBarArea = new RightTopBarArea(cefWebView, onSettingsToggle, onHideWindow);
         topBarPanel.add(rightTopBarArea.buildRightArea(), BorderLayout.EAST);
 
         setupDragging(topBarPanel);
@@ -64,7 +65,7 @@ public class TopBarArea {
                 frame.setLocation(frameLocation.x + dx, frameLocation.y + dy);
 
                 if (settingsWindow.isOpen()) {
-                    settingsWindow.setPosition(dx, dy);
+                    settingsWindow.dragWindow(dx, dy);
                 }
             }
         });

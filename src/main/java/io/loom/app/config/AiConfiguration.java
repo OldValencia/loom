@@ -1,4 +1,4 @@
-package io.aipanel.app.config;
+package io.loom.app.config;
 
 import lombok.Getter;
 import lombok.Setter;

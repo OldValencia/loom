@@ -1,11 +1,11 @@
-package io.aipanel.app.windows;
+package io.loom.app.windows;
 
-import io.aipanel.app.config.AiConfiguration;
-import io.aipanel.app.config.AppPreferences;
-import io.aipanel.app.ui.CefWebView;
-import io.aipanel.app.ui.Theme;
-import io.aipanel.app.ui.settings.SettingsPanel;
-import io.aipanel.app.ui.topbar.TopBarArea;
+import io.loom.app.config.AiConfiguration;
+import io.loom.app.config.AppPreferences;
+import io.loom.app.ui.CefWebView;
+import io.loom.app.ui.Theme;
+import io.loom.app.ui.settings.SettingsPanel;
+import io.loom.app.ui.topbar.TopBarArea;
 import lombok.RequiredArgsConstructor;
 
 import javax.swing.*;
@@ -49,7 +49,7 @@ public class MainWindow {
         settingsPanel.setOnZoomEnabledChanged(cefWebView::setZoomEnabled);
         settingsWindow = new SettingsWindow(frame, settingsPanel);
 
-        var topBarArea = new TopBarArea(aiConfiguration, cefWebView, frame, settingsWindow, appPreferences, this::toggleSettings);
+        var topBarArea = new TopBarArea(aiConfiguration, cefWebView, frame, settingsWindow, appPreferences, this::toggleSettings, this::hideWindow);
         root.add(topBarArea.createTopBar(), BorderLayout.NORTH);
 
         frame.add(root);
@@ -61,6 +61,13 @@ public class MainWindow {
             settingsWindow.close();
         } else {
             settingsWindow.open();
+        }
+    }
+
+    private void hideWindow() {
+        var frame = (JFrame) SwingUtilities.getWindowAncestor(cefWebView);
+        if (frame != null) {
+            frame.setState(JFrame.ICONIFIED);
         }
     }
 
@@ -83,7 +90,7 @@ public class MainWindow {
     }
 
     private JFrame buildMainFrame() {
-        var frame = new JFrame("AI Panel");
+        var frame = new JFrame("Loom");
         frame.setUndecorated(true);
         frame.setAlwaysOnTop(true);
         frame.setSize(WIDTH, HEIGHT);

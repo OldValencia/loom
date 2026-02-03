@@ -1,5 +1,5 @@
 <configuration>
-    <property name="LOG_DIR" value="${user.home}/.aipanel/logs" />
+    <property name="LOG_DIR" value="${user.home}/.loom/logs" />
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>

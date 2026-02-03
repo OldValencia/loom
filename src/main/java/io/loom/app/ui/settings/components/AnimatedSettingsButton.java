@@ -1,6 +1,6 @@
-package io.aipanel.app.ui.settings.components;
+package io.loom.app.ui.settings.components;
 
-import io.aipanel.app.ui.Theme;
+import io.loom.app.ui.Theme;
 
 import javax.swing.*;
 import java.awt.*;
@@ -11,15 +11,13 @@ import java.awt.geom.RoundRectangle2D;
 public class AnimatedSettingsButton extends JPanel {
 
     private final String text;
-    private final Runnable action;
+    private final Timer animTimer;
 
     private float hoverProgress = 0f;
     private boolean hovered = false;
-    private final Timer animTimer;
 
     public AnimatedSettingsButton(String text, Runnable action) {
         this.text = text;
-        this.action = action;
 
         setOpaque(false);
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));

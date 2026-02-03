@@ -1,9 +1,9 @@
-package io.aipanel.app.ui.topbar;
+package io.loom.app.ui.topbar;
 
-import io.aipanel.app.config.AiConfiguration;
-import io.aipanel.app.config.AppPreferences;
-import io.aipanel.app.ui.CefWebView;
-import io.aipanel.app.ui.topbar.components.AiDock;
+import io.loom.app.config.AiConfiguration;
+import io.loom.app.config.AppPreferences;
+import io.loom.app.ui.CefWebView;
+import io.loom.app.ui.topbar.components.AiDock;
 import lombok.RequiredArgsConstructor;
 
 import javax.swing.*;

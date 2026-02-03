@@ -1,4 +1,4 @@
-package io.aipanel.app.utils;
+package io.loom.app.utils;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -12,7 +12,7 @@ import java.util.Date;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class LogSetup {
 
-    public static final String APP_DIR = System.getProperty("user.home") + File.separator + ".aipanel";
+    public static final String APP_DIR = System.getProperty("user.home") + File.separator + ".loom";
     public static final String LOGS_DIR = APP_DIR + File.separator + "logs";
     private static final int MAX_LOG_FILES = 3;
     private static final long CEF_LOG_MAX_BYTES = 2 * 1024 * 1024; // 2 MB

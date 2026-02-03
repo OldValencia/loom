@@ -1,11 +1,11 @@
 plugins {
     id 'java'
     id 'application'
-    id 'org.beryx.jlink' version '2.25.0'
+    id 'org.beryx.jlink' version '3.2.1'
 }
 
-group = 'io.aipanel'
-version = '0.0.3'
+group = 'io.loom'
+version = '0.0.4'
 
 repositories {
     mavenCentral()
@@ -26,9 +26,22 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 application {
-    mainClass = 'io.aipanel.app.AIPanelApplication'
+    mainClass = 'io.loom.app.LoomApplication'
+    mainModule = 'io.loom.merged'
     applicationDefaultJvmArgs = [
-            '-XX:-OmitStackTraceInFastThrow',
+            '-Xms16m',
+            '-Xmx48m',
+            '-Xss192k',
+            '-XX:MaxMetaspaceSize=24m',
+            '-XX:CompressedClassSpaceSize=8m',
+
+            '-XX:+UseSerialGC',
+            '-XX:MinHeapFreeRatio=10',
+            '-XX:MaxHeapFreeRatio=20',
+
+            '-XX:+TieredCompilation',
+            '-XX:TieredStopAtLevel=1',
+            '-XX:-UsePerfData',
 
             '-Dsun.java2d.d3d=false',
             '-Dsun.java2d.ddoffscreen=false',
@@ -42,25 +55,8 @@ application {
 
             '--add-opens=java.desktop/sun.awt=ALL-UNNAMED',
             '--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED',
-            '--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED',
-
-            '-Xms20m', '-Xmx64m', '-Xss256k',
-            '-XX:MaxMetaspaceSize=32m', '-XX:+UseSerialGC'
+            '--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED'
     ]
-}
-
-jlink {
-    options = [
-            '--strip-debug',
-            '--compress', '2',
-            '--no-header-files',
-            '--no-man-pages',
-            '--strip-native-commands'
-    ]
-    launcher {
-        name = 'AI Panel'
-    }
-    addOptions('--add-modules', 'java.desktop')
 }
 
 dependencies {
@@ -72,15 +68,92 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:2.0.17'
     implementation 'ch.qos.logback:logback-classic:1.5.27'
 
-    // Lombok
     compileOnly "org.projectlombok:lombok:$lombokVersion"
     annotationProcessor "org.projectlombok:lombok:$lombokVersion"
 
-    // JUnit
     testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
 }
 
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+}
+
+jlink {
+    moduleName = 'io.loom.merged'
+
+    options = [
+            '--strip-debug',
+            '--compress', 'zip-6',
+            '--no-header-files',
+            '--no-man-pages'
+    ]
+
+    mergedModule {
+        requires 'java.desktop'
+        requires 'java.management'
+        requires 'java.naming'
+        requires 'jdk.unsupported'
+    }
+
+    launcher {
+        name = 'Loom'
+        jvmArgs = [
+                '-Xms16m',
+                '-Xmx48m',
+                '-Xss192k',
+                '-XX:MaxMetaspaceSize=24m',
+                '-XX:CompressedClassSpaceSize=16m',
+
+                '-XX:+UseSerialGC',
+                '-XX:MinHeapFreeRatio=10',
+                '-XX:MaxHeapFreeRatio=20',
+
+                '-XX:+TieredCompilation',
+                '-XX:TieredStopAtLevel=1',
+                '-XX:-UsePerfData',
+
+                '-Dsun.java2d.d3d=false',
+                '-Dsun.java2d.ddoffscreen=false',
+                '-Dsun.java2d.noddraw=true',
+                '-Dsun.java2d.uiScale=1.0',
+                '-Djogl.disable.openglcore=false',
+
+                '--add-exports=java.base/java.lang=ALL-UNNAMED',
+                '--add-exports=java.desktop/sun.awt=ALL-UNNAMED',
+                '--add-exports=java.desktop/sun.java2d=ALL-UNNAMED',
+
+                '--add-opens=java.desktop/sun.awt=ALL-UNNAMED',
+                '--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED',
+                '--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED'
+        ]
+    }
+
+    jpackage {
+        skipInstaller = false
+        installerName = "Loom-${version}"
+        outputDir = "build/installer"
+        if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+            installerType = "exe"
+            imageOptions = ['--icon', 'src/main/resources/app-icons/icon.ico']
+            installerOptions = [
+                    '--win-dir-chooser',
+                    '--win-menu',
+                    '--win-shortcut',
+                    '--win-per-user-install',
+                    '--vendor', 'Loom'
+            ]
+        } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+            installerType = "dmg"
+            imageOptions = ['--icon', 'src/main/resources/app-icons/icon.icns']
+            installerOptions = [
+                    '--vendor', 'Loom'
+                    // '--mac-sign' // Если есть сертификат разработчика Apple
+            ]
+        } else {
+            // Linux (deb/rpm)
+            installerType = "deb"
+            installerOptions = ['--vendor', 'Loom']
+        }
+    }
 }
