@@ -120,8 +120,7 @@ tasks.register('createInstaller', Exec) {
                 '--win-menu',
                 '--win-shortcut-prompt',
                 '--win-per-user-install',
-                '--win-upgrade-uuid', 'f3c4e5d6-a7b8-9c0d-1e2f-3a4b5c6d7e8f',
-                '--win-console'
+                '--win-upgrade-uuid', 'f3c4e5d6-a7b8-9c0d-1e2f-3a4b5c6d7e8f'
         ]
     } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
         installerType = "dmg"
@@ -139,9 +138,9 @@ tasks.register('createInstaller', Exec) {
             '--main-jar', "Loom-${version}.jar",
             '--main-class', application.mainClass.get(),
             '--add-modules', 'java.desktop,jdk.unsupported,java.logging,java.naming,java.management,jdk.crypto.ec',
-    * winOptions ,
+    *winOptions,
 
-    * javaOpts.collectMany { ['--java-options', it] }
+    *javaOpts.collectMany { ['--java-options', it] }
 
     doFirst {
         println "Building installer using: $jpackage"
