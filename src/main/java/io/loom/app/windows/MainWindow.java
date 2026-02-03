@@ -9,11 +9,13 @@ import io.loom.app.ui.topbar.TopBarArea;
 import io.loom.app.utils.GlobalHotkeyManager;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 
+@Slf4j
 @RequiredArgsConstructor
 public class MainWindow {
 
@@ -45,8 +47,16 @@ public class MainWindow {
         root.add(cefWebView, BorderLayout.CENTER);
 
         frame = buildMainFrame();
-        var globalHotkeyManager = new GlobalHotkeyManager(this, appPreferences);
-        globalHotkeyManager.start();
+
+        GlobalHotkeyManager globalHotkeyManager = null;
+        try {
+            globalHotkeyManager = new GlobalHotkeyManager(this, appPreferences);
+            globalHotkeyManager.start();
+            log.info("Global hotkey manager initialized successfully");
+        } catch (Exception | UnsatisfiedLinkError e) {
+            log.error("Failed to initialize global hotkey manager, hotkey feature will be disabled", e);
+        }
+
         var settingsPanel = new SettingsPanel(appPreferences, globalHotkeyManager);
         settingsPanel.setOnRememberLastAiChanged(appPreferences::setRememberLastAi);
         settingsPanel.setOnClearCookies(cefWebView::clearCookies);
@@ -101,7 +111,7 @@ public class MainWindow {
         try {
             tray.add(trayIcon);
         } catch (AWTException e) {
-            e.printStackTrace();
+            log.error("Failed to setup system tray", e);
         }
     }
 

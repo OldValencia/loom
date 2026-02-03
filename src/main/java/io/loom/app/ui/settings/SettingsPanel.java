@@ -61,9 +61,11 @@ public class SettingsPanel extends JPanel {
 
         add(Box.createVerticalStrut(16));
 
-        addSection("Global Hotkey");
-        addHotkeySection();
-        add(Box.createVerticalStrut(16));
+        if (hotkeyManager != null) {
+            addSection("Global Hotkey");
+            addHotkeySection();
+            add(Box.createVerticalStrut(16));
+        }
 
         buildSection("Browser", appPreferences.isZoomEnabled(), onZoomEnabledChanged, "Zoom enabled");
         add(Box.createVerticalStrut(12));
@@ -135,17 +137,21 @@ public class SettingsPanel extends JPanel {
         var currentHotkey = GlobalHotkeyManager.getHotkeyText(appPreferences.getHotkeyToStartApplication());
 
         hotkeyRecordBtn = new AnimatedSettingsButton(currentHotkey.isEmpty() ? "Click to Record" : currentHotkey, () -> {
-            hotkeyRecordBtn.setText("Press keys... (Esc to cancel)");
-            hotkeyManager.startRecording(() -> {
-                var newHotkey = GlobalHotkeyManager.getHotkeyText(appPreferences.getHotkeyToStartApplication());
-                hotkeyRecordBtn.setText(newHotkey);
-            });
+            if (hotkeyManager != null) {
+                hotkeyRecordBtn.setText("Press keys... (Esc to cancel)");
+                hotkeyManager.startRecording(() -> {
+                    var newHotkey = GlobalHotkeyManager.getHotkeyText(appPreferences.getHotkeyToStartApplication());
+                    hotkeyRecordBtn.setText(newHotkey);
+                });
+            }
         });
 
         var resetColor = new Color(255, 94, 91);
         var resetBtn = new ColorfulButton("✖", resetColor, () -> {
-            hotkeyManager.clearHotkey();
-            hotkeyRecordBtn.setText("None");
+            if (hotkeyManager != null) {
+                hotkeyManager.clearHotkey();
+                hotkeyRecordBtn.setText("None");
+            }
         });
 
         row.add(label);

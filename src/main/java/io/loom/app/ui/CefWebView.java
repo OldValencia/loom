@@ -186,7 +186,20 @@ public class CefWebView extends JPanel {
             builder.setInstallDir(new File(INSTALL_DIR));
             builder.addJcefArgs("--renderer-process-limit=1");
             builder.addJcefArgs("--disable-gpu-shader-disk-cache");
-            builder.addJcefArgs("--disk-cache-size=10485760");
+            builder.addJcefArgs("--disk-cache-size=5242880");  // 5MB instead of 10MB
+            builder.addJcefArgs("--disable-webgl");
+            builder.addJcefArgs("--disable-accelerated-2d-canvas");
+            builder.addJcefArgs("--disable-accelerated-video-decode");
+            builder.addJcefArgs("--disable-software-rasterizer");
+            builder.addJcefArgs("--disable-dev-shm-usage");
+            builder.addJcefArgs("--js-flags=--expose-gc");
+            builder.addJcefArgs("--enable-aggressive-domstorage-flushing");
+            builder.addJcefArgs("--max-old-space-size=128");
+            builder.addJcefArgs("--disable-features=AutofillServerCommunication");
+            builder.addJcefArgs("--disable-features=TranslateUI");
+            builder.addJcefArgs("--disable-features=MediaRouter");
+            builder.addJcefArgs("--process-per-site");
+
             configureSettings(builder);
 
             var app = builder.build();
@@ -217,7 +230,7 @@ public class CefWebView extends JPanel {
                 }
             });
 
-            log.info("JCEF Initialized");
+            log.info("JCEF Initialized with memory optimizations");
 
         } catch (IOException | UnsupportedPlatformException | InterruptedException | CefInitializationException e) {
             log.error("Failed to init JCEF", e);
@@ -230,7 +243,7 @@ public class CefWebView extends JPanel {
         settings.cache_path = CACHE_DIR;
         settings.root_cache_path = CACHE_DIR;
         settings.persist_session_cookies = true;
-        settings.command_line_args_disabled = true;
+        settings.command_line_args_disabled = false;
         settings.log_file = CEF_LOG_FILE;
         settings.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     }
