@@ -178,6 +178,9 @@ public class CefWebView extends JPanel {
         try {
             var builder = new CefAppBuilder();
             builder.setInstallDir(new File(INSTALL_DIR));
+            builder.addJcefArgs("--renderer-process-limit=1");
+            builder.addJcefArgs("--disable-gpu-shader-disk-cache");
+            builder.addJcefArgs("--disk-cache-size=10485760");
             configureSettings(builder);
 
             var app = builder.build();

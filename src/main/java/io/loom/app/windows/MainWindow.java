@@ -6,12 +6,12 @@ import io.loom.app.ui.CefWebView;
 import io.loom.app.ui.Theme;
 import io.loom.app.ui.settings.SettingsPanel;
 import io.loom.app.ui.topbar.TopBarArea;
+import io.loom.app.utils.GlobalHotkeyManager;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.awt.geom.RoundRectangle2D;
 
 @RequiredArgsConstructor
@@ -22,6 +22,8 @@ public class MainWindow {
 
     private CefWebView cefWebView;
     private SettingsWindow settingsWindow;
+    @Getter
+    private JFrame frame;
 
     private static final int WIDTH = 820;
     private static final int HEIGHT = 700;
@@ -42,18 +44,57 @@ public class MainWindow {
         cefWebView = getCefWebView();
         root.add(cefWebView, BorderLayout.CENTER);
 
-        var frame = buildMainFrame();
-        var settingsPanel = new SettingsPanel(appPreferences);
+        frame = buildMainFrame();
+        var globalHotkeyManager = new GlobalHotkeyManager(this, appPreferences);
+        globalHotkeyManager.start();
+        var settingsPanel = new SettingsPanel(appPreferences, globalHotkeyManager);
         settingsPanel.setOnRememberLastAiChanged(appPreferences::setRememberLastAi);
         settingsPanel.setOnClearCookies(cefWebView::clearCookies);
         settingsPanel.setOnZoomEnabledChanged(cefWebView::setZoomEnabled);
         settingsWindow = new SettingsWindow(frame, settingsPanel);
 
-        var topBarArea = new TopBarArea(aiConfiguration, cefWebView, frame, settingsWindow, appPreferences, this::toggleSettings, this::hideWindow);
+        var topBarArea = new TopBarArea(aiConfiguration, cefWebView, frame, settingsWindow, appPreferences, this::toggleSettings, this::closeWindow);
         root.add(topBarArea.createTopBar(), BorderLayout.NORTH);
+
+        if (SystemTray.isSupported()) {
+            setupTray();
+        }
 
         frame.add(root);
         frame.setVisible(true);
+    }
+
+    private void setupTray() {
+        var tray = SystemTray.getSystemTray();
+        var iconUrl = getClass().getResource("/app-icons/icon.png");
+        if (iconUrl == null) {
+            iconUrl = getClass().getResource("/app-icons/icon.ico");
+        }
+        var image = Toolkit.getDefaultToolkit().getImage(iconUrl);
+        var popup = new PopupMenu();
+        var exitItem = new MenuItem("Exit Loom");
+
+        exitItem.addActionListener(e -> {
+            cefWebView.shutdown(() -> {
+                System.exit(0);
+            });
+        });
+        popup.add(exitItem);
+
+        var trayIcon = new TrayIcon(image, "Loom", popup);
+        trayIcon.setImageAutoSize(true);
+        trayIcon.addActionListener(e -> {
+            frame.setVisible(true);
+            frame.setExtendedState(JFrame.NORMAL);
+            frame.toFront();
+            frame.requestFocus();
+        });
+
+        try {
+            tray.add(trayIcon);
+        } catch (AWTException e) {
+            e.printStackTrace();
+        }
     }
 
     private void toggleSettings() {
@@ -64,10 +105,9 @@ public class MainWindow {
         }
     }
 
-    private void hideWindow() {
-        var frame = (JFrame) SwingUtilities.getWindowAncestor(cefWebView);
+    private void closeWindow() {
         if (frame != null) {
-            frame.setState(JFrame.ICONIFIED);
+            frame.setVisible(false);
         }
     }
 
@@ -97,13 +137,7 @@ public class MainWindow {
         frame.setLocationRelativeTo(null);
         frame.setBackground(new Color(0, 0, 0, 0));
         frame.setShape(new RoundRectangle2D.Double(0, 0, WIDTH, HEIGHT, RADIUS, RADIUS));
-        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        frame.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                cefWebView.shutdown(() -> System.exit(0));
-            }
-        });
+        frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         return frame;
     }
 }
