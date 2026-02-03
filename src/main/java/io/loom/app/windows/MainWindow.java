@@ -86,11 +86,7 @@ public class MainWindow {
         popup.addSeparator();
 
         var exitItem = new MenuItem("Exit Loom");
-        exitItem.addActionListener(e -> {
-            cefWebView.shutdown(() -> {
-                System.exit(0);
-            });
-        });
+        exitItem.addActionListener(e -> cefWebView.shutdown(() -> System.exit(0)));
         popup.add(exitItem);
 
         var trayIcon = new TrayIcon(image, "Loom", popup);
