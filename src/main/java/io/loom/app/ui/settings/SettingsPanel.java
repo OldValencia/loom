@@ -5,7 +5,6 @@ import io.loom.app.ui.Theme;
 import io.loom.app.ui.settings.components.AnimatedSettingsButton;
 import io.loom.app.ui.settings.components.AnimatedToggleSwitch;
 import io.loom.app.ui.settings.components.ColorfulButton;
-import io.loom.app.utils.AutoStartManager;
 import io.loom.app.utils.GlobalHotkeyManager;
 import io.loom.app.utils.UpdateChecker;
 import lombok.Setter;
@@ -50,10 +49,7 @@ public class SettingsPanel extends JPanel {
         buildSection("General", appPreferences.isRememberLastAi(), onRememberLastAiChanged, "Remember last used AI");
 
         var autoStartToggle = new AnimatedToggleSwitch(appPreferences.isAutoStartEnabled());
-        autoStartToggle.setOnChange(val -> {
-            appPreferences.setAutoStartEnabled(val);
-            AutoStartManager.setAutoStart(val);
-        });
+        autoStartToggle.setOnChange(appPreferences::setAutoStartEnabled);
         addSettingRow("Run on System Startup", autoStartToggle);
 
         var updateToggle = new AnimatedToggleSwitch(appPreferences.isCheckUpdatesOnStartupEnabled());
@@ -99,12 +95,12 @@ public class SettingsPanel extends JPanel {
         footerPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         footerPanel.setMaximumSize(new Dimension(Short.MAX_VALUE, 30));
 
-        var lbl = new JLabel("Loom application on Github");
-        lbl.setFont(Theme.FONT_SETTINGS.deriveFont(11f));
-        lbl.setForeground(Theme.TEXT_TERTIARY);
-        lbl.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        var label = new JLabel("Loom application on Github");
+        label.setFont(Theme.FONT_SETTINGS.deriveFont(11f));
+        label.setForeground(Theme.TEXT_TERTIARY);
+        label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        lbl.addMouseListener(new MouseAdapter() {
+        label.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 openLink("https://github.com/oldvalencia/loom");
@@ -112,16 +108,16 @@ public class SettingsPanel extends JPanel {
 
             @Override
             public void mouseEntered(MouseEvent e) {
-                lbl.setForeground(Theme.TEXT_SECONDARY);
+                label.setForeground(Theme.TEXT_SECONDARY);
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                lbl.setForeground(Theme.TEXT_TERTIARY);
+                label.setForeground(Theme.TEXT_TERTIARY);
             }
         });
 
-        footerPanel.add(lbl);
+        footerPanel.add(label);
         add(footerPanel);
     }
 

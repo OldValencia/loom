@@ -60,13 +60,9 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
     public void startRecording(Runnable onRecordComplete) {
         this.onRecordComplete = onRecordComplete;
         this.pressedKeys.clear();
-
-        // ВАЖНО: Делаем небольшую задержку перед началом записи.
-        // Иначе JNativeHook ловит событие MouseReleased от клика по кнопке "Record"
-        // и мгновенно завершает запись (или записывает клик).
         new Timer(200, e -> {
             ((Timer) e.getSource()).stop();
-            pressedKeys.clear(); // Чистим на случай, если что-то проскочило за 200мс
+            pressedKeys.clear();
             isRecording = true;
         }).start();
     }
@@ -109,12 +105,11 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
                 return;
             }
             if (code == NativeKeyEvent.VC_DELETE || code == NativeKeyEvent.VC_BACKSPACE) {
-                finishRecording(true, true); // true = save, true = clear (save empty)
+                finishRecording(true, true);
                 return;
             }
 
             pressedKeys.add(code);
-            // Если нажато много клавиш - хватит
             if (pressedKeys.size() >= 4) {
                 finishRecording(true);
             }
@@ -127,7 +122,6 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
     @Override
     public void nativeKeyReleased(NativeKeyEvent e) {
         if (isRecording) {
-            // Завершаем запись при отпускании любой клавиши, ЕСЛИ что-то уже было нажато
             if (!pressedKeys.isEmpty()) {
                 finishRecording(true);
             }
@@ -151,17 +145,11 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
         int mouseCode = 10000 + e.getButton();
 
         if (isRecording) {
-            // Если отпустили кнопку мыши во время записи:
-
-            // 1. Проверяем, не является ли это одиночным кликом ЛКМ/ПКМ без модификаторов
             boolean isSimpleClick = pressedKeys.size() == 1 && (pressedKeys.contains(10001) || pressedKeys.contains(10002));
 
             if (!pressedKeys.isEmpty() && !isSimpleClick) {
-                // Если это Ctrl + Click, то здесь pressedKeys содержит [Ctrl, Mouse]. Сохраняем.
                 finishRecording(true);
             } else {
-                // Если это просто клик (или мышь отпустили раньше, чем нажали модификатор),
-                // просто удаляем кнопку из буфера, давая шанс нажать другую комбинацию.
                 pressedKeys.remove(mouseCode);
             }
         } else {
@@ -169,7 +157,6 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
         }
     }
 
-    // Overloads для удобства
     private void finishRecording(boolean save) {
         finishRecording(save, false);
     }
@@ -187,7 +174,6 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
             pressedKeys.clear();
         }
 
-        // Сразу чистим pressedKeys после сохранения, чтобы не триггернуло действие сразу после записи
         pressedKeys.clear();
 
         if (onRecordComplete != null) {
@@ -195,7 +181,6 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
         }
     }
 
-    // Остальные методы пустые
     @Override
     public void nativeMouseMoved(NativeMouseEvent e) {
     }

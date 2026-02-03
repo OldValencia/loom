@@ -19,12 +19,11 @@ public class UpdateChecker {
     public static void check(Component parentComponent) {
         new Thread(() -> {
             try (var client = HttpClient.newHttpClient()) {
-                HttpRequest request = HttpRequest.newBuilder()
+                var request = HttpRequest.newBuilder()
                         .uri(URI.create(REPO_URL))
                         .build();
 
-                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
+                var response = client.send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() == 200) {
                     var json = JsonParser.parseString(response.body()).getAsJsonObject();
                     var latestTag = json.get("tag_name").getAsString();
@@ -40,7 +39,7 @@ public class UpdateChecker {
     }
 
     private static void showUpdateDialog(Component parent, String version, String url) {
-        int choice = JOptionPane.showConfirmDialog(parent,
+        var choice = JOptionPane.showConfirmDialog(parent,
                 "New version " + version + " is available! Download now?",
                 "Update Available", JOptionPane.YES_NO_OPTION);
 

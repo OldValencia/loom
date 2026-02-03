@@ -1,5 +1,6 @@
 package io.loom.app.config;
 
+import io.loom.app.utils.AutoStartManager;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
@@ -31,6 +32,7 @@ public class AppPreferences {
 
     public AppPreferences() {
         load();
+        initDefaults();
     }
 
     private void load() {
@@ -39,6 +41,43 @@ public class AppPreferences {
             props.load(is);
         } catch (IOException e) {
             log.error("Failed to load application preferences", e);
+        }
+    }
+
+    private void initDefaults() {
+        boolean changed = false;
+
+        if (!props.containsKey(KEY_REMEMBER_AI)) {
+            props.setProperty(KEY_REMEMBER_AI, "true");
+            changed = true;
+        }
+        if (!props.containsKey(KEY_ZOOM_ENABLED)) {
+            props.setProperty(KEY_ZOOM_ENABLED, "true");
+            changed = true;
+        }
+        if (!props.containsKey(KEY_LAST_ZOOM_VALUE)) {
+            props.setProperty(KEY_LAST_ZOOM_VALUE, "0.0");
+            changed = true;
+        }
+        if (!props.containsKey(KEY_CHECK_UPDATES_ON_STARTUP)) {
+            props.setProperty(KEY_CHECK_UPDATES_ON_STARTUP, "true");
+            changed = true;
+        }
+        if (!props.containsKey(KEY_AUTO_START_ENABLED)) {
+            props.setProperty(KEY_AUTO_START_ENABLED, "true");
+            changed = true;
+        }
+        if (!props.containsKey(KEY_AI_ORDER)) {
+            props.setProperty(KEY_AI_ORDER, "");
+            changed = true;
+        }
+        if (!props.containsKey(KEY_HOTKEY_TO_START_APPLICATION)) {
+            props.setProperty(KEY_HOTKEY_TO_START_APPLICATION, "");
+            changed = true;
+        }
+
+        if (changed) {
+            save();
         }
     }
 
@@ -83,7 +122,11 @@ public class AppPreferences {
     }
 
     public Double getLastZoomValue() {
-        return Double.valueOf(props.getProperty(KEY_LAST_ZOOM_VALUE, "0.0"));
+        try {
+            return Double.valueOf(props.getProperty(KEY_LAST_ZOOM_VALUE, "0.0"));
+        } catch (NumberFormatException e) {
+            return 0.0;
+        }
     }
 
     public void setZoomEnabled(boolean zoomEnabled) {
@@ -126,6 +169,7 @@ public class AppPreferences {
     public void setAutoStartEnabled(boolean autoStartEnabled) {
         props.setProperty(KEY_AUTO_START_ENABLED, String.valueOf(autoStartEnabled));
         save();
+        AutoStartManager.setAutoStart(autoStartEnabled);
     }
 
     public boolean isAutoStartEnabled() {
