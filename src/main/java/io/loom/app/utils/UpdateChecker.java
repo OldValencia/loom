@@ -13,7 +13,7 @@ import java.net.http.HttpResponse;
 @Slf4j
 public class UpdateChecker {
 
-    private static final String CURRENT_VERSION = "0.0.5";
+    private static final String CURRENT_VERSION = "0.0.6";
     private static final String REPO_URL = "https://api.github.com/repos/oldvalencia/loom/releases/latest";
 
     public static void check(Component parentComponent) {
