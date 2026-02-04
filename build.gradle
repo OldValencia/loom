@@ -111,6 +111,7 @@ tasks.register('createInstaller', Exec) {
     def installerType = "deb"
     def iconPath = "src/main/resources/app-icons/icon.png"
     def winOptions = []
+    def appVersion = version
 
     if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
         installerType = "exe"
@@ -125,6 +126,10 @@ tasks.register('createInstaller', Exec) {
     } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
         installerType = "dmg"
         iconPath = "src/main/resources/app-icons/icon.icns"
+        if (version.toString().startsWith("0.")) {
+            appVersion = "1." + version.toString().substring(1)
+            println "MacOS requires version >= 1. Patching installer version to: $appVersion"
+        }
     }
 
     commandLine jpackage,
@@ -132,7 +137,7 @@ tasks.register('createInstaller', Exec) {
             '--dest', 'build/installer',
             '--name', 'Loom',
             '--vendor', 'OldValencia',
-            '--app-version', version,
+            '--app-version', appVersion,
             '--icon', iconPath,
             '--input', 'build/install/Loom/lib',
             '--main-jar', "Loom-${version}.jar",
