@@ -52,6 +52,10 @@ public class SettingsPanel extends JPanel {
         autoStartToggle.setOnChange(appPreferences::setAutoStartEnabled);
         addSettingRow("Run on System Startup", autoStartToggle);
 
+        var startApplicationHiddenToggle = new AnimatedToggleSwitch(appPreferences.isStartApplicationHiddenEnabled());
+        startApplicationHiddenToggle.setOnChange(appPreferences::setStartApplicationHiddenEnabled);
+        addSettingRow("Run the application in the background", startApplicationHiddenToggle);
+
         var updateToggle = new AnimatedToggleSwitch(appPreferences.isCheckUpdatesOnStartupEnabled());
         updateToggle.setOnChange(val -> {
             appPreferences.setCheckUpdatesOnStartup(val);

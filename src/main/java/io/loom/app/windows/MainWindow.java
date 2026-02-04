@@ -72,7 +72,7 @@ public class MainWindow {
         }
 
         frame.add(root);
-        frame.setVisible(true);
+        frame.setVisible(!appPreferences.isStartApplicationHiddenEnabled());
     }
 
     private void setupTray() {

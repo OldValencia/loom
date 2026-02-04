@@ -28,6 +28,7 @@ public class AppPreferences {
     private static final String KEY_AI_ORDER = "ai_order";
     private static final String KEY_CHECK_UPDATES_ON_STARTUP = "check_updates_on_startup";
     private static final String KEY_AUTO_START_ENABLED = "auto_start_enabled";
+    private static final String KEY_START_APPLICATION_HIDDEN_ENABLED = "start_application_hidden_enabled";
     private static final String KEY_HOTKEY_TO_START_APPLICATION = "hotkey_to_start_application";
 
     public AppPreferences() {
@@ -65,6 +66,10 @@ public class AppPreferences {
         }
         if (!props.containsKey(KEY_AUTO_START_ENABLED)) {
             props.setProperty(KEY_AUTO_START_ENABLED, "true");
+            changed = true;
+        }
+        if (!props.containsKey(KEY_START_APPLICATION_HIDDEN_ENABLED)) {
+            props.setProperty(KEY_START_APPLICATION_HIDDEN_ENABLED, "true");
             changed = true;
         }
         if (!props.containsKey(KEY_AI_ORDER)) {
@@ -174,6 +179,15 @@ public class AppPreferences {
 
     public boolean isAutoStartEnabled() {
         return Boolean.parseBoolean(props.getProperty(KEY_AUTO_START_ENABLED, "true"));
+    }
+
+    public void setStartApplicationHiddenEnabled(boolean autoStartEnabled) {
+        props.setProperty(KEY_START_APPLICATION_HIDDEN_ENABLED, String.valueOf(autoStartEnabled));
+        save();
+    }
+
+    public boolean isStartApplicationHiddenEnabled() {
+        return Boolean.parseBoolean(props.getProperty(KEY_START_APPLICATION_HIDDEN_ENABLED, "true"));
     }
 
     public void setHotkeyToStartApplication(List<Integer> keys) {
