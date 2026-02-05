@@ -7,6 +7,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.font.TextLayout;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 
@@ -28,19 +29,35 @@ public class ColorfulButton extends JPanel {
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         setLayout(null);
 
-        setFont(getFontForSystem());
-        var img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-        var g2d = img.createGraphics();
-        g2d.setFont(getFont());
-        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        var fontMetrics = g2d.getFontMetrics();
-        g2d.dispose();
+        Font displayFont;
+        if (SystemUtils.isMac()) {
+            displayFont = new Font(".AppleSystemUIFont", Font.PLAIN, 14);
+        } else if (SystemUtils.isWindows()) {
+            displayFont = new Font("Segoe UI", Font.PLAIN, 13);
+        } else {
+            displayFont = new Font(Font.SANS_SERIF, Font.PLAIN, 13);
+        }
+
+        setFont(displayFont);
+
+        var tempImg = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+        var tempG = tempImg.createGraphics();
+        tempG.setFont(displayFont);
+        tempG.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        tempG.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+
+        var frc = tempG.getFontRenderContext();
+        TextLayout textLayout = new TextLayout(text, displayFont, frc);
+
+        int textWidth = (int) Math.ceil(textLayout.getBounds().getWidth());
+        tempG.dispose();
 
         Dimension dim;
         if (isIconMode) {
             dim = new Dimension(30, 30);
         } else {
-            dim = new Dimension(fontMetrics.stringWidth(text) + 36, 34);
+            int padding = SystemUtils.isMac() ? 60 : 40;
+            dim = new Dimension(textWidth + padding, 34);
         }
         setPreferredSize(dim);
         setMaximumSize(dim);
@@ -65,18 +82,6 @@ public class ColorfulButton extends JPanel {
         });
     }
 
-    private static Font getFontForSystem() {
-        if (SystemUtils.isWindows()) {
-            var font = new Font("Segoe UI Emoji", Font.PLAIN, 13);
-            if (font.getFamily().equalsIgnoreCase("Dialog")) {
-                return Theme.FONT_SELECTOR.deriveFont(13f);
-            }
-        } else {
-            return new Font(Font.SANS_SERIF, Font.PLAIN, 13);
-        }
-        return null;
-    }
-
     private void tick() {
         var target = hovered ? 1f : 0f;
         var diff = target - hoverProgress;
@@ -92,9 +97,12 @@ public class ColorfulButton extends JPanel {
     @Override
     protected void paintComponent(Graphics g0) {
         var g = (Graphics2D) g0;
+
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
 
         int w = getWidth();
         int h = getHeight();
@@ -118,10 +126,11 @@ public class ColorfulButton extends JPanel {
 
         g.setFont(getFont());
         g.setColor(Theme.TEXT_PRIMARY);
-
-        var fm = g.getFontMetrics();
-        var textX = (w - fm.stringWidth(text)) / 2f;
-        var textY = (h - fm.getHeight()) / 2f + fm.getAscent();
-        g.drawString(text, textX, textY);
+        var frc = g.getFontRenderContext();
+        var layout = new TextLayout(text, getFont(), frc);
+        var bounds = layout.getBounds();
+        float textX = (w - (float) bounds.getWidth()) / 2f;
+        float textY = (h + layout.getAscent() - layout.getDescent()) / 2f;
+        layout.draw(g, textX, textY);
     }
 }

@@ -54,6 +54,15 @@ public class TopBarArea {
             @Override
             public void mousePressed(MouseEvent e) {
                 initialClick = e.getPoint();
+
+                if (settingsWindow != null && settingsWindow.isOpen()) {
+                    settingsWindow.close();
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                initialClick = null;
             }
         });
 
@@ -70,12 +79,6 @@ public class TopBarArea {
                 int newY = yOnScreen - initialClick.y;
 
                 frame.setLocation(newX, newY);
-
-                int dx = newX - frame.getX();
-                int dy = newY - frame.getY();
-                if (settingsWindow.isOpen()) {
-                    settingsWindow.dragWindow(dx, dy);
-                }
             }
         });
     }

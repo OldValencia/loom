@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.geom.RoundRectangle2D;
 
 @Slf4j
@@ -26,6 +28,7 @@ public class MainWindow {
     private SettingsWindow settingsWindow;
     @Getter
     private JFrame frame;
+    private GlobalHotkeyManager globalHotkeyManager;
 
     private static final int WIDTH = 820;
     private static final int HEIGHT = 700;
@@ -48,7 +51,6 @@ public class MainWindow {
 
         frame = buildMainFrame();
 
-        GlobalHotkeyManager globalHotkeyManager = null;
         try {
             globalHotkeyManager = new GlobalHotkeyManager(this, appPreferences);
             globalHotkeyManager.start();
@@ -85,28 +87,18 @@ public class MainWindow {
         var popup = new PopupMenu();
 
         var showItem = new MenuItem("Show Application");
-        showItem.addActionListener(e -> {
-            frame.setVisible(true);
-            frame.setExtendedState(JFrame.NORMAL);
-            frame.toFront();
-            frame.requestFocus();
-        });
+        showItem.addActionListener(e -> showMainWindow());
         popup.add(showItem);
 
         popup.addSeparator();
 
         var exitItem = new MenuItem("Exit Loom");
-        exitItem.addActionListener(e -> cefWebView.shutdown(() -> System.exit(0)));
+        exitItem.addActionListener(e -> performShutdown());
         popup.add(exitItem);
 
         var trayIcon = new TrayIcon(image, "Loom", popup);
         trayIcon.setImageAutoSize(true);
-        trayIcon.addActionListener(e -> {
-            frame.setVisible(true);
-            frame.setExtendedState(JFrame.NORMAL);
-            frame.toFront();
-            frame.requestFocus();
-        });
+        trayIcon.addActionListener(e -> showMainWindow());
 
         try {
             tray.add(trayIcon);
@@ -115,7 +107,19 @@ public class MainWindow {
         }
     }
 
+    private void showMainWindow() {
+        frame.setVisible(true);
+        frame.setExtendedState(JFrame.NORMAL);
+        frame.toFront();
+        frame.requestFocus();
+    }
+
     private void toggleSettings() {
+        if (!frame.isVisible() && settingsWindow.isOpen()) {
+            settingsWindow.close();
+            return;
+        }
+
         if (settingsWindow.isOpen()) {
             settingsWindow.close();
         } else {
@@ -124,8 +128,42 @@ public class MainWindow {
     }
 
     private void closeWindow() {
+        if (settingsWindow != null && settingsWindow.isOpen()) {
+            settingsWindow.close();
+        }
+
         if (frame != null) {
             frame.setVisible(false);
+        }
+    }
+
+    private void performShutdown() {
+        log.info("Starting application shutdown...");
+
+        if (globalHotkeyManager != null) {
+            try {
+                globalHotkeyManager.stop();
+                log.info("Global hotkey manager stopped");
+            } catch (Exception e) {
+                log.error("Error stopping hotkey manager", e);
+            }
+        }
+
+        if (settingsWindow != null && settingsWindow.isOpen()) {
+            settingsWindow.close();
+        }
+
+        if (frame != null) {
+            frame.setVisible(false);
+        }
+
+        if (cefWebView != null) {
+            cefWebView.shutdown(() -> {
+                log.info("CEF shutdown complete, exiting...");
+                System.exit(0);
+            });
+        } else {
+            System.exit(0);
         }
     }
 
@@ -156,6 +194,16 @@ public class MainWindow {
         frame.setBackground(new Color(0, 0, 0, 0));
         frame.setShape(new RoundRectangle2D.Double(0, 0, WIDTH, HEIGHT, RADIUS, RADIUS));
         frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (settingsWindow != null && settingsWindow.isOpen()) {
+                    settingsWindow.close();
+                }
+            }
+        });
+
         return frame;
     }
 }
