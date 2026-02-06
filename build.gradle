@@ -69,7 +69,6 @@ application {
 
 dependencies {
     implementation 'me.friwi:jcefmaven:141.0.10'
-    implementation 'org.yaml:snakeyaml:2.2'
     implementation 'com.github.weisj:jsvg:2.0.0'
     implementation "com.formdev:flatlaf:$flatLafVersion"
     implementation "com.formdev:flatlaf-extras:$flatLafVersion"
@@ -77,7 +76,6 @@ dependencies {
     implementation 'ch.qos.logback:logback-classic:1.5.27'
     implementation 'org.apache.commons:commons-collections4:4.5.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.0'
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.21.0'
 
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'com.github.kwhat:jnativehook:2.2.2'
@@ -129,13 +127,13 @@ tasks.register('createInstaller', Exec) {
                 '-Dsun.java2d.opengl=true',
                 '-Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine'
         ]
-        
+
         macOptions = [
-            '--mac-package-identifier', 'io.loom.app',
-            '--mac-package-name', 'Loom',
-            '--mac-entitlements', 'src/main/resources/mac/entitlements.plist'
+                '--mac-package-identifier', 'io.loom.app',
+                '--mac-package-name', 'Loom',
+                '--mac-entitlements', 'src/main/resources/mac/entitlements.plist'
         ]
-        
+
         if (version.toString().startsWith("0.")) {
             appVersion = "1" + version.toString().substring(1)
             println "MacOS requires version >= 1. Patching installer version to: $appVersion"
@@ -153,10 +151,10 @@ tasks.register('createInstaller', Exec) {
             '--main-jar', "Loom-${version}.jar",
             '--main-class', application.mainClass.get(),
             '--add-modules', 'java.desktop,jdk.unsupported,java.logging,java.naming,java.management,jdk.crypto.ec',
-    *winOptions,
-    *macOptions,
+    * winOptions ,
+    * macOptions ,
 
-    *javaOpts.collectMany { ['--java-options', it] }
+    * javaOpts.collectMany { ['--java-options', it] }
 
     doFirst {
         println "Building installer using: $jpackage"

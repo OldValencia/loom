@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class AiConfiguration {
@@ -15,7 +16,10 @@ public class AiConfiguration {
     @Getter
     private List<AiConfig> configurations = new ArrayList<>();
 
-    public AiConfiguration() {
+    private final AppPreferences appPreferences;
+
+    public AiConfiguration(AppPreferences appPreferences) {
+        this.appPreferences = appPreferences;
         this.customProvidersManager = new CustomAiProvidersManager();
         reload();
     }
@@ -23,6 +27,13 @@ public class AiConfiguration {
     public void reload() {
         this.configurations = customProvidersManager.loadProviders();
         log.info("AiConfiguration loaded {} providers", configurations.size());
+
+        if (appPreferences != null) {
+            List<String> validUrls = configurations.stream()
+                    .map(AiConfig::url)
+                    .collect(Collectors.toList());
+            appPreferences.cleanupLastUrlIfNeeded(validUrls);
+        }
     }
 
     public void resetToDefaults() {

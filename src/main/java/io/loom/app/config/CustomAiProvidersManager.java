@@ -1,9 +1,8 @@
 package io.loom.app.config;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -20,14 +19,15 @@ import java.util.UUID;
 public class CustomAiProvidersManager {
 
     private final ObjectMapper jsonMapper = new ObjectMapper();
-    private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
 
     private final File configFile;
+
+    @Getter
     private final File iconsDir;
 
     public CustomAiProvidersManager() {
         File configDir = resolveConfigDirectory();
-        this.configFile = new File(configDir, "custom-providers.json");
+        this.configFile = new File(configDir, "providers.json");
         this.iconsDir = new File(configDir, "icons");
 
         if (!configDir.exists() && !configDir.mkdirs()) {
@@ -40,10 +40,6 @@ public class CustomAiProvidersManager {
 
     private File resolveConfigDirectory() {
         String userHome = System.getProperty("user.home");
-//        String os = System.getProperty("os.name", "").toLowerCase();
-//        if (os.contains("mac")) {
-//            return new File(userHome, "Library/Application Support/Loom");
-//        }
         return new File(userHome, ".loom");
     }
 
@@ -53,42 +49,29 @@ public class CustomAiProvidersManager {
             restoreDefaults();
         }
 
-        // 2. Читаем JSON
         try {
             return jsonMapper.readValue(configFile, new TypeReference<>() {});
         } catch (IOException e) {
-            log.error("Failed to load custom providers", e);
+            log.error("Failed to load providers", e);
             return new ArrayList<>();
         }
     }
 
     public void restoreDefaults() {
         try {
-            InputStream inputStream = getClass().getResourceAsStream("/default-providers.yml");
-            if (inputStream == null) {
-                inputStream = getClass().getResourceAsStream("/ai-configurations.yml");
-            }
+            InputStream inputStream = getClass().getResourceAsStream("/default-providers.json");
 
             if (inputStream == null) {
                 log.error("Default providers file not found!");
                 return;
             }
 
-            JsonNode rootNode = yamlMapper.readTree(inputStream);
-            List<AiConfiguration.AiConfig> defaultConfigs;
-            List<AiConfiguration.AiConfig> processedConfigs = new ArrayList<>();
+            var defaultConfigs = jsonMapper.readValue(
+                    inputStream,
+                    new TypeReference<List<AiConfiguration.AiConfig>>() {}
+            );
 
-            if (rootNode.has("providers")) {
-                defaultConfigs = yamlMapper.convertValue(rootNode.get("providers"), new TypeReference<>() {});
-            } else if (rootNode.has("configurations")) {
-                defaultConfigs = yamlMapper.convertValue(rootNode.get("configurations"), new TypeReference<>() {});
-            } else if (rootNode.isArray()) {
-                // Если это просто список
-                defaultConfigs = yamlMapper.convertValue(rootNode, new TypeReference<>() {});
-            } else {
-                log.error("Invalid YAML structure: root is not array and has no 'providers' key");
-                return;
-            }
+            List<AiConfiguration.AiConfig> processedConfigs = new ArrayList<>();
 
             for (AiConfiguration.AiConfig config : defaultConfigs) {
                 String localIconName = extractIconFromResources(config.icon());
@@ -98,11 +81,10 @@ public class CustomAiProvidersManager {
                         config.name(),
                         config.url(),
                         config.color(),
-                        localIconName
+                        localIconName != null ? localIconName : config.icon()
                 ));
             }
 
-            // Сохраняем в JSON
             saveProviders(processedConfigs);
             log.info("Restored default providers and icons.");
 
@@ -111,26 +93,29 @@ public class CustomAiProvidersManager {
         }
     }
 
-    private String extractIconFromResources(String resourcePath) {
-        if (resourcePath == null || resourcePath.isEmpty()) return null;
+    private String extractIconFromResources(String iconName) {
+        if (iconName == null || iconName.isEmpty()) {
+            return null;
+        }
 
         try {
-            // resourcePath в YAML выглядит как "/icons/chatgpt.svg"
+            String resourcePath = "/icons/" + iconName;
             InputStream in = getClass().getResourceAsStream(resourcePath);
+
             if (in == null) {
                 log.warn("Icon resource not found: {}", resourcePath);
                 return null;
             }
 
-            String filename = new File(resourcePath).getName(); // chatgpt.svg
-            File targetFile = new File(iconsDir, filename);
-
-            // Копируем файл в .loom/icons, если его там нет или перезаписываем при сбросе
+            File targetFile = new File(iconsDir, iconName);
             Files.copy(in, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            in.close();
 
-            return filename; // Возвращаем имя файла для сохранения в JSON
+            log.info("Extracted icon: {} -> {}", resourcePath, targetFile.getAbsolutePath());
+            return iconName;
+
         } catch (IOException e) {
-            log.error("Failed to extract icon: " + resourcePath, e);
+            log.error("Failed to extract icon: " + iconName, e);
             return null;
         }
     }
@@ -144,7 +129,6 @@ public class CustomAiProvidersManager {
         }
     }
 
-    // Метод для добавления нового кастомного провайдера (с фавиконкой)
     public void addCustomProvider(String name, String url, String color) {
         List<AiConfiguration.AiConfig> current = loadProviders();
 
@@ -160,7 +144,6 @@ public class CustomAiProvidersManager {
         for (int i = 0; i < current.size(); i++) {
             if (current.get(i).id().equals(id)) {
                 String oldIcon = current.get(i).icon();
-                // Если URL поменялся, можно попробовать перекачать иконку, но пока оставим старую
                 current.set(i, new AiConfiguration.AiConfig(id, name, url, color, oldIcon));
                 break;
             }
@@ -170,9 +153,22 @@ public class CustomAiProvidersManager {
 
     public void deleteProvider(String id) {
         List<AiConfiguration.AiConfig> current = loadProviders();
+
+        AiConfiguration.AiConfig toDelete = current.stream()
+                .filter(p -> p.id().equals(id))
+                .findFirst()
+                .orElse(null);
+
         current.removeIf(p -> p.id().equals(id));
         saveProviders(current);
-        // Можно добавить удаление файла иконки, если нужно
+
+        if (toDelete != null && toDelete.icon() != null && id.startsWith("custom_")) {
+            File iconFile = new File(iconsDir, toDelete.icon());
+            if (iconFile.exists()) {
+                iconFile.delete();
+                log.info("Deleted icon: {}", iconFile.getAbsolutePath());
+            }
+        }
     }
 
     private String downloadFavicon(String urlString, String id) {
@@ -180,24 +176,20 @@ public class CustomAiProvidersManager {
             URL url = new URL("https://www.google.com/s2/favicons?domain=" + new URL(urlString).getHost() + "&sz=64");
             File iconFile = new File(iconsDir, id + ".png");
 
-            // Скачиваем
             try (InputStream in = url.openStream()) {
                 Files.copy(in, iconFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             }
 
-            // Проверяем, не скачалась ли пустышка (некоторые сервисы возвращают 1x1 пиксель)
             if (iconFile.length() < 100) {
-                return null; // Иконка битая
+                log.warn("Downloaded icon is too small (likely placeholder): {}", iconFile.length());
+                return null;
             }
 
+            log.info("Downloaded favicon: {}", iconFile.getAbsolutePath());
             return iconFile.getName();
         } catch (Exception e) {
             log.error("Failed to download favicon for " + urlString, e);
             return null;
         }
-    }
-
-    public File getIconsDir() {
-        return iconsDir;
     }
 }
