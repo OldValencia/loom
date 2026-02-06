@@ -1,6 +1,6 @@
 package io.loom.app.ui.dialogs;
 
-import io.loom.app.config.CustomAiProvidersManager.CustomProvider;
+import io.loom.app.config.AiConfiguration; // Изменили импорт
 import io.loom.app.ui.Theme;
 import lombok.Getter;
 
@@ -15,7 +15,8 @@ public class ProviderEditDialog extends JDialog {
     @Getter
     private boolean confirmed = false;
 
-    public ProviderEditDialog(Frame owner, CustomProvider provider) {
+    // Заменили CustomProvider на AiConfiguration.AiConfig
+    public ProviderEditDialog(Frame owner, AiConfiguration.AiConfig provider) {
         super(owner, provider == null ? "Add AI Provider" : "Edit AI Provider", true);
 
         setUndecorated(true);
@@ -35,12 +36,12 @@ public class ProviderEditDialog extends JDialog {
         formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
 
         formPanel.add(createLabel("Provider Name:"));
-        nameField = createTextField(provider != null ? provider.getName() : "");
+        nameField = createTextField(provider != null ? provider.name() : ""); // Используем record accessor
         formPanel.add(nameField);
         formPanel.add(Box.createVerticalStrut(12));
 
         formPanel.add(createLabel("Website URL:"));
-        urlField = createTextField(provider != null ? provider.getUrl() : "https://");
+        urlField = createTextField(provider != null ? provider.url() : "https://"); // Используем record accessor
         formPanel.add(urlField);
         formPanel.add(Box.createVerticalStrut(8));
 

@@ -54,6 +54,10 @@ public class SettingsPanel extends JPanel {
         addDonationSection();
         add(Box.createVerticalStrut(20));
         addProvidersSection();
+        add(Box.createVerticalStrut(10));
+
+        var resetRow = buildResetRow(aiConfiguration);
+        add(resetRow);
         add(Box.createVerticalStrut(20));
 
         buildSection("General", appPreferences.isRememberLastAi(), onRememberLastAiChanged, "Remember last used AI");
@@ -108,9 +112,37 @@ public class SettingsPanel extends JPanel {
         }
     }
 
-    private void addProvidersSection() {
-        addSection("Custom AI Providers");
+    private JPanel buildResetRow(AiConfiguration aiConfiguration) {
+        var resetColor = new Color(255, 94, 91);
+        var resetProvidersBtn = new ColorfulButton(
+                "Reset Providers to Default",
+                resetColor,
+                () -> {
+                    int choice = JOptionPane.showConfirmDialog(
+                            this,
+                            "Are you sure? This will delete all custom providers and icons.",
+                            "Reset Configuration",
+                            JOptionPane.YES_NO_OPTION
+                    );
 
+                    if (choice == JOptionPane.YES_OPTION) {
+                        aiConfiguration.resetToDefaults();
+                        if (onProvidersChanged != null) {
+                            onProvidersChanged.run();
+                        }
+                    }
+                }
+        );
+
+        var resetRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        resetRow.setOpaque(false);
+        resetRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        resetRow.setMaximumSize(new Dimension(Short.MAX_VALUE, 40));
+        resetRow.add(resetProvidersBtn);
+        return resetRow;
+    }
+
+    private void addProvidersSection() {
         var providersPanel = new ProvidersManagementPanel(
                 aiConfiguration.getCustomProvidersManager(),
                 v -> {

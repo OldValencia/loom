@@ -17,6 +17,7 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -40,6 +41,8 @@ public class AiDock extends JPanel {
     private final AppPreferences appPreferences;
     private final Timer animationTimer;
 
+    private final File userIconsDir;
+
     private int selectedIndex = 0;
     private boolean isDragging = false;
     private int dragStartIndex = -1;
@@ -49,6 +52,14 @@ public class AiDock extends JPanel {
     public AiDock(List<AiConfiguration.AiConfig> configs, CefWebView cefWebView, AppPreferences appPreferences) {
         this.cefWebView = cefWebView;
         this.appPreferences = appPreferences;
+
+        String userHome = System.getProperty("user.home");
+//        String os = System.getProperty("os.name", "").toLowerCase();
+//        if (os.contains("mac")) {
+//            this.userIconsDir = new File(userHome, "Library/Application Support/Loom/icons");
+//        } else {
+        this.userIconsDir = new File(userHome, ".loom/icons");
+//        }
 
         setOpaque(false);
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -399,7 +410,11 @@ public class AiDock extends JPanel {
             g.draw(shape);
         }
 
-        var icon = ICON_CACHE.get(item.config.icon());
+        Image icon = null;
+        if (item.config.icon() != null) {
+            icon = ICON_CACHE.get(item.config.icon());
+        }
+
         if (icon != null) {
             var iconY = y + (ITEM_HEIGHT - ICON_SIZE) / 2;
             g.drawImage(icon, x + PAD, iconY, ICON_SIZE, ICON_SIZE, null);
@@ -429,49 +444,49 @@ public class AiDock extends JPanel {
 
         ICON_CACHE.computeIfAbsent(cfg.icon(), key -> {
             try {
-                if (cfg.isCustom()) {
-                    var iconPath = cfg.getIconPath();
-                    var iconFile = new File(iconPath);
-
-                    if (!iconFile.exists()) {
-                        log.warn("Custom icon not found: {}", iconPath);
-                        return createPlaceholderIcon();
-                    }
-
-                    var img = ImageIO.read(iconFile);
-                    if (img == null) {
-                        log.warn("Failed to read custom icon: {}", iconPath);
-                        return createPlaceholderIcon();
-                    }
-
-                    log.info("Loaded custom icon: {} from {}", cfg.name(), iconPath);
-                    return resize(img);
-
-                } else {
-                    var url = AiDock.class.getResource("/icons/" + key);
-                    if (url == null) {
-                        log.warn("Built-in icon not found in resources: {}", key);
-                        return createPlaceholderIcon();
-                    }
-
+                // 1. Сначала пробуем найти иконку в ресурсах JAR (для встроенных)
+                URL resourceUrl = AiDock.class.getResource("/icons/" + key);
+                if (resourceUrl != null) {
                     if (key.toLowerCase().endsWith(".svg")) {
-                        var icon = new FlatSVGIcon(url);
-                        var scaledIcon = icon.derive(ICON_SIZE, ICON_SIZE);
-                        var img = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
-                        var g = img.createGraphics();
-                        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                        scaledIcon.paintIcon(null, g, 0, 0);
-                        g.dispose();
-                        return img;
+                        var icon = new FlatSVGIcon(resourceUrl);
+                        return renderSvg(icon);
                     } else {
-                        return resize(ImageIO.read(url));
+                        return resize(ImageIO.read(resourceUrl));
                     }
                 }
+
+                // 2. Если в ресурсах нет, ищем в папке пользователя (для кастомных/скачанных)
+                // Даже встроенные могут быть скопированы сюда при сбросе
+                File userIconFile = new File(userIconsDir, key);
+                if (userIconFile.exists()) {
+                    if (key.toLowerCase().endsWith(".svg")) {
+                        // FlatSVGIcon умеет грузить и из File через URI
+                        var icon = new FlatSVGIcon(userIconFile);
+                        return renderSvg(icon);
+                    } else {
+                        return resize(ImageIO.read(userIconFile));
+                    }
+                }
+
+                // 3. Если нигде нет
+                log.warn("Icon not found: {} (searched in resources and {})", key, userIconsDir.getAbsolutePath());
+                return createPlaceholderIcon();
+
             } catch (Exception e) {
                 log.error("Error while trying to preload icon for {}", cfg.name(), e);
                 return createPlaceholderIcon();
             }
         });
+    }
+
+    private Image renderSvg(FlatSVGIcon icon) {
+        var scaledIcon = icon.derive(ICON_SIZE, ICON_SIZE);
+        var img = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
+        var g = img.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        scaledIcon.paintIcon(null, g, 0, 0);
+        g.dispose();
+        return img;
     }
 
     private Image createPlaceholderIcon() {

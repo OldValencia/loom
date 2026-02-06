@@ -1,7 +1,7 @@
 package io.loom.app.ui.settings.components;
 
+import io.loom.app.config.AiConfiguration;
 import io.loom.app.config.CustomAiProvidersManager;
-import io.loom.app.config.CustomAiProvidersManager.CustomProvider;
 import io.loom.app.ui.Theme;
 import io.loom.app.ui.dialogs.ProviderEditDialog;
 
@@ -28,7 +28,7 @@ public class ProvidersManagementPanel extends JPanel {
         var headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
 
-        var titleLabel = new JLabel("MY AI PROVIDERS");
+        var titleLabel = new JLabel("AI PROVIDERS");
         titleLabel.setFont(Theme.FONT_SETTINGS_SECTION);
         titleLabel.setForeground(Theme.TEXT_TERTIARY);
 
@@ -70,16 +70,19 @@ public class ProvidersManagementPanel extends JPanel {
     private void refreshProvidersList() {
         providersList.removeAll();
 
-        var providers = providersManager.getAllProviders();
+        var allProviders = providersManager.loadProviders();
+        var customProviders = allProviders.stream()
+                .filter(p -> p.id().startsWith("custom_"))
+                .toList();
 
-        if (providers.isEmpty()) {
+        if (customProviders.isEmpty()) {
             var emptyLabel = new JLabel("No custom providers yet. Click '+ Add' to create one.");
             emptyLabel.setFont(Theme.FONT_SETTINGS.deriveFont(12f));
             emptyLabel.setForeground(Theme.TEXT_TERTIARY);
             emptyLabel.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
             providersList.add(emptyLabel);
         } else {
-            for (var provider : providers) {
+            for (var provider : customProviders) {
                 providersList.add(createProviderItem(provider));
                 providersList.add(Box.createVerticalStrut(4));
             }
@@ -89,7 +92,7 @@ public class ProvidersManagementPanel extends JPanel {
         providersList.repaint();
     }
 
-    private JPanel createProviderItem(CustomProvider provider) {
+    private JPanel createProviderItem(AiConfiguration.AiConfig provider) {
         var panel = new JPanel();
         panel.setOpaque(false);
         panel.setLayout(new BorderLayout(12, 0));
@@ -105,7 +108,7 @@ public class ProvidersManagementPanel extends JPanel {
                 var g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 try {
-                    g2.setColor(Color.decode(provider.getColor()));
+                    g2.setColor(Color.decode(provider.color()));
                 } catch (Exception e) {
                     g2.setColor(Theme.ACCENT);
                 }
@@ -120,12 +123,12 @@ public class ProvidersManagementPanel extends JPanel {
         infoPanel.setOpaque(false);
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
 
-        var nameLabel = new JLabel(provider.getName());
+        var nameLabel = new JLabel(provider.name());
         nameLabel.setFont(Theme.FONT_SETTINGS.deriveFont(Font.BOLD));
         nameLabel.setForeground(Theme.TEXT_PRIMARY);
         nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        var urlLabel = new JLabel(provider.getUrl());
+        var urlLabel = new JLabel(provider.url());
         urlLabel.setFont(Theme.FONT_SETTINGS.deriveFont(11f));
         urlLabel.setForeground(Theme.TEXT_TERTIARY);
         urlLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -184,11 +187,12 @@ public class ProvidersManagementPanel extends JPanel {
         if (dialog.isConfirmed()) {
             var name = dialog.getProviderName();
             var url = dialog.getProviderUrl();
+            var color = String.format("#%06x", (int)(Math.random() * 0xFFFFFF));// random color for provider
 
             var worker = new SwingWorker<Void, Void>() {
                 @Override
                 protected Void doInBackground() {
-                    providersManager.addProvider(name, url);
+                    providersManager.addCustomProvider(name, url, color);
                     return null;
                 }
 
@@ -202,7 +206,7 @@ public class ProvidersManagementPanel extends JPanel {
         }
     }
 
-    private void showEditDialog(CustomProvider provider) {
+    private void showEditDialog(AiConfiguration.AiConfig provider) {
         var ownerFrame = getOwnerFrame();
         var dialog = new ProviderEditDialog(ownerFrame, provider);
         dialog.setVisible(true);
@@ -214,7 +218,7 @@ public class ProvidersManagementPanel extends JPanel {
             SwingWorker<Void, Void> worker = new SwingWorker<>() {
                 @Override
                 protected Void doInBackground() {
-                    providersManager.updateProvider(provider.getId(), name, url);
+                    providersManager.updateProvider(provider.id(), name, url, provider.color());
                     return null;
                 }
 
@@ -228,19 +232,19 @@ public class ProvidersManagementPanel extends JPanel {
         }
     }
 
-    private void showDeleteConfirmation(CustomProvider provider) {
+    private void showDeleteConfirmation(AiConfiguration.AiConfig provider) {
         var ownerFrame = getOwnerFrame();
 
         int result = JOptionPane.showConfirmDialog(
                 ownerFrame,
-                "Are you sure you want to delete \"" + provider.getName() + "\"?",
+                "Are you sure you want to delete \"" + provider.name() + "\"?",
                 "Confirm Deletion",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE
         );
 
         if (result == JOptionPane.YES_OPTION) {
-            providersManager.deleteProvider(provider.getId());
+            providersManager.deleteProvider(provider.id());
             refreshProvidersList();
             onProvidersChanged.accept(null);
         }
