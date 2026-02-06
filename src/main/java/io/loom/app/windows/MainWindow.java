@@ -28,6 +28,7 @@ public class MainWindow {
     private SettingsWindow settingsWindow;
     @Getter
     private JFrame frame;
+    private JPanel rootPanel;
     private GlobalHotkeyManager globalHotkeyManager;
 
     public static final int HEIGHT = 700;
@@ -35,7 +36,7 @@ public class MainWindow {
     private static final int RADIUS = 14;
 
     public void showWindow() {
-        var root = new JPanel(new BorderLayout()) {
+        rootPanel = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
                 var g2 = (Graphics2D) g;
@@ -44,10 +45,10 @@ public class MainWindow {
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), RADIUS, RADIUS));
             }
         };
-        root.setBackground(Theme.BG_DEEP);
+        rootPanel.setBackground(Theme.BG_DEEP);
 
         cefWebView = getCefWebView();
-        root.add(cefWebView, BorderLayout.CENTER);
+        rootPanel.add(cefWebView, BorderLayout.CENTER);
 
         frame = buildMainFrame();
 
@@ -68,20 +69,55 @@ public class MainWindow {
         cefWebView.setSettingsWindow(settingsWindow);
 
         var topBarArea = new TopBarArea(aiConfiguration, cefWebView, frame, settingsWindow, appPreferences, this::toggleSettings, this::closeWindow);
-        root.add(topBarArea.createTopBar(), BorderLayout.NORTH);
+        rootPanel.add(topBarArea.createTopBar(), BorderLayout.NORTH);
 
         if (SystemTray.isSupported()) {
             setupTray();
         }
 
-        frame.add(root);
+        frame.add(rootPanel);
         frame.setVisible(!appPreferences.isStartApplicationHiddenEnabled());
     }
 
     private void handleProvidersChanged() {
-        // Перезагружаем TopBarArea с новыми провайдерами
+        SwingUtilities.invokeLater(this::reloadTopBar);
+    }
+
+    public void reloadTopBar() {
         SwingUtilities.invokeLater(() -> {
-            // TODO: обновить AiDock
+            aiConfiguration.reload();
+
+            Component topBarToRemove = null;
+            for (Component comp : rootPanel.getComponents()) {
+                if (comp.getClass().getSimpleName().contains("Panel")) {
+                    var constraints = ((BorderLayout) rootPanel.getLayout()).getConstraints(comp);
+                    if (constraints != null && constraints.equals(BorderLayout.NORTH)) {
+                        topBarToRemove = comp;
+                        break;
+                    }
+                }
+            }
+
+            if (topBarToRemove != null) {
+                rootPanel.remove(topBarToRemove);
+            }
+
+            var newTopBarArea = new TopBarArea(
+                    aiConfiguration,
+                    cefWebView,
+                    frame,
+                    settingsWindow,
+                    appPreferences,
+                    this::toggleSettings,
+                    this::closeWindow
+            );
+
+            rootPanel.add(newTopBarArea.createTopBar(), BorderLayout.NORTH);
+
+            rootPanel.revalidate();
+            rootPanel.repaint();
+
+            log.info("TopBar reloaded with {} providers", aiConfiguration.getConfigurations().size());
         });
     }
 

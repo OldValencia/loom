@@ -11,9 +11,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
 
-/**
- * Панель для управления кастомными AI провайдерами
- */
 public class ProvidersManagementPanel extends JPanel {
 
     private final CustomAiProvidersManager providersManager;
@@ -28,7 +25,6 @@ public class ProvidersManagementPanel extends JPanel {
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 0));
 
-        // Заголовок с кнопкой добавления
         var headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
 
@@ -42,7 +38,6 @@ public class ProvidersManagementPanel extends JPanel {
         headerPanel.add(addButton, BorderLayout.EAST);
         add(headerPanel, BorderLayout.NORTH);
 
-        // Список провайдеров
         providersList = new JPanel();
         providersList.setOpaque(false);
         providersList.setLayout(new BoxLayout(providersList, BoxLayout.Y_AXIS));
@@ -104,7 +99,6 @@ public class ProvidersManagementPanel extends JPanel {
         ));
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
 
-        // Цветовой индикатор
         var colorPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -122,7 +116,6 @@ public class ProvidersManagementPanel extends JPanel {
         colorPanel.setPreferredSize(new Dimension(4, 32));
         panel.add(colorPanel, BorderLayout.WEST);
 
-        // Информация
         var infoPanel = new JPanel();
         infoPanel.setOpaque(false);
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
@@ -142,14 +135,13 @@ public class ProvidersManagementPanel extends JPanel {
         infoPanel.add(urlLabel);
         panel.add(infoPanel, BorderLayout.CENTER);
 
-        // Кнопки действий
-        var actionsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        var actionsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actionsPanel.setOpaque(false);
 
-        var editBtn = createActionButton("✎", "Edit");
+        var editBtn = createTextActionButton("Edit");
         editBtn.addActionListener(e -> showEditDialog(provider));
 
-        var deleteBtn = createActionButton("✕", "Delete");
+        var deleteBtn = createTextActionButton("Delete");
         deleteBtn.addActionListener(e -> showDeleteConfirmation(provider));
 
         actionsPanel.add(editBtn);
@@ -159,22 +151,20 @@ public class ProvidersManagementPanel extends JPanel {
         return panel;
     }
 
-    private JButton createActionButton(String icon, String tooltip) {
-        var button = new JButton(icon);
-        button.setFont(new Font("SansSerif", Font.PLAIN, 16));
+    private JButton createTextActionButton(String text) {
+        var button = new JButton(text);
+        button.setFont(Theme.FONT_SETTINGS.deriveFont(12f));
         button.setForeground(Theme.TEXT_SECONDARY);
         button.setOpaque(false);
         button.setContentAreaFilled(false);
         button.setBorderPainted(false);
         button.setFocusPainted(false);
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        button.setPreferredSize(new Dimension(28, 28));
-        button.setToolTipText(tooltip);
 
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                button.setForeground(Theme.TEXT_PRIMARY);
+                button.setForeground(Theme.ACCENT);
             }
 
             @Override
@@ -187,7 +177,6 @@ public class ProvidersManagementPanel extends JPanel {
     }
 
     private void showAddDialog() {
-        // Получаем MainWindow Frame через иерархию окон
         var ownerFrame = getOwnerFrame();
         var dialog = new ProviderEditDialog(ownerFrame, null);
         dialog.setVisible(true);
@@ -196,10 +185,7 @@ public class ProvidersManagementPanel extends JPanel {
             var name = dialog.getProviderName();
             var url = dialog.getProviderUrl();
 
-            // Показываем прогресс
-            showProgress("Adding provider...");
-
-            SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            var worker = new SwingWorker<Void, Void>() {
                 @Override
                 protected Void doInBackground() {
                     providersManager.addProvider(name, url);
@@ -208,7 +194,6 @@ public class ProvidersManagementPanel extends JPanel {
 
                 @Override
                 protected void done() {
-                    hideProgress();
                     refreshProvidersList();
                     onProvidersChanged.accept(null);
                 }
@@ -226,8 +211,6 @@ public class ProvidersManagementPanel extends JPanel {
             var name = dialog.getProviderName();
             var url = dialog.getProviderUrl();
 
-            showProgress("Updating provider...");
-
             SwingWorker<Void, Void> worker = new SwingWorker<>() {
                 @Override
                 protected Void doInBackground() {
@@ -237,7 +220,6 @@ public class ProvidersManagementPanel extends JPanel {
 
                 @Override
                 protected void done() {
-                    hideProgress();
                     refreshProvidersList();
                     onProvidersChanged.accept(null);
                 }
@@ -264,36 +246,20 @@ public class ProvidersManagementPanel extends JPanel {
         }
     }
 
-    private void showProgress(String message) {
-        // TODO: Показать индикатор загрузки
-    }
-
-    private void hideProgress() {
-        // TODO: Скрыть индикатор загрузки
-    }
-
-    /**
-     * Получает MainWindow Frame через иерархию окон
-     * SettingsPanel -> JScrollPane -> JWindow -> owner (JFrame)
-     */
     private Frame getOwnerFrame() {
-        // Поднимаемся по иерархии до Window
         Window window = SwingUtilities.getWindowAncestor(this);
 
         if (window instanceof JWindow jWindow) {
-            // У JWindow есть owner, который является JFrame
             Window owner = jWindow.getOwner();
             if (owner instanceof Frame frame) {
                 return frame;
             }
         }
 
-        // Fallback: ищем любой Frame в иерархии
         if (window instanceof Frame frame) {
             return frame;
         }
 
-        // Крайний случай: возвращаем null, Dialog создастся без owner
         return null;
     }
 }

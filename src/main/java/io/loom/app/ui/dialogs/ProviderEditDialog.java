@@ -2,18 +2,17 @@ package io.loom.app.ui.dialogs;
 
 import io.loom.app.config.CustomAiProvidersManager.CustomProvider;
 import io.loom.app.ui.Theme;
+import lombok.Getter;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 
-/**
- * Диалог для добавления или редактирования AI провайдера
- */
 public class ProviderEditDialog extends JDialog {
 
     private final JTextField nameField;
     private final JTextField urlField;
+    @Getter
     private boolean confirmed = false;
 
     public ProviderEditDialog(Frame owner, CustomProvider provider) {
@@ -23,18 +22,7 @@ public class ProviderEditDialog extends JDialog {
         setBackground(new Color(0, 0, 0, 0));
         setLayout(new BorderLayout());
 
-        var mainPanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                var g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(Theme.BG_BAR);
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 14, 14));
-            }
-        };
-        mainPanel.setOpaque(false);
-        mainPanel.setLayout(new BorderLayout());
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
+        var mainPanel = createMainPanel();
 
         var titleLabel = new JLabel(provider == null ? "Add New AI Provider" : "Edit AI Provider");
         titleLabel.setFont(Theme.FONT_SETTINGS.deriveFont(Font.BOLD, 18f));
@@ -94,6 +82,22 @@ public class ProviderEditDialog extends JDialog {
         setShape(new RoundRectangle2D.Double(0, 0, 420, 280, 14, 14));
     }
 
+    private static JPanel createMainPanel() {
+        var mainPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                var g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Theme.BG_BAR);
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 14, 14));
+            }
+        };
+        mainPanel.setOpaque(false);
+        mainPanel.setLayout(new BorderLayout());
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
+        return mainPanel;
+    }
+
     private JLabel createLabel(String text) {
         var label = new JLabel(text);
         label.setFont(Theme.FONT_SETTINGS);
@@ -149,16 +153,12 @@ public class ProviderEditDialog extends JDialog {
             return false;
         }
 
-        if (url.isEmpty() || !url.startsWith("http")) {
+        if (!url.startsWith("http")) {
             JOptionPane.showMessageDialog(this, "Please enter a valid URL (starting with http:// or https://)", "Validation Error", JOptionPane.ERROR_MESSAGE);
             return false;
         }
 
         return true;
-    }
-
-    public boolean isConfirmed() {
-        return confirmed;
     }
 
     public String getProviderName() {

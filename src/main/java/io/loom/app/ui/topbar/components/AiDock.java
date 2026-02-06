@@ -426,21 +426,34 @@ public class AiDock extends JPanel {
         if (cfg.icon() == null) {
             return;
         }
+
         ICON_CACHE.computeIfAbsent(cfg.icon(), key -> {
             try {
                 if (cfg.isCustom()) {
-                    var iconFile = new File(cfg.getIconPath());
+                    var iconPath = cfg.getIconPath();
+                    var iconFile = new File(iconPath);
+
                     if (!iconFile.exists()) {
-                        log.warn("Custom icon not found: {}", cfg.getIconPath());
-                        return null;
+                        log.warn("Custom icon not found: {}", iconPath);
+                        return createPlaceholderIcon();
                     }
-                    return resize(ImageIO.read(iconFile));
+
+                    var img = ImageIO.read(iconFile);
+                    if (img == null) {
+                        log.warn("Failed to read custom icon: {}", iconPath);
+                        return createPlaceholderIcon();
+                    }
+
+                    log.info("Loaded custom icon: {} from {}", cfg.name(), iconPath);
+                    return resize(img);
 
                 } else {
                     var url = AiDock.class.getResource("/icons/" + key);
                     if (url == null) {
-                        return null;
+                        log.warn("Built-in icon not found in resources: {}", key);
+                        return createPlaceholderIcon();
                     }
+
                     if (key.toLowerCase().endsWith(".svg")) {
                         var icon = new FlatSVGIcon(url);
                         var scaledIcon = icon.derive(ICON_SIZE, ICON_SIZE);
@@ -455,10 +468,30 @@ public class AiDock extends JPanel {
                     }
                 }
             } catch (Exception e) {
-                log.error("Error while trying to preload icons", e);
-                return null;
+                log.error("Error while trying to preload icon for {}", cfg.name(), e);
+                return createPlaceholderIcon();
             }
         });
+    }
+
+    private Image createPlaceholderIcon() {
+        var img = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
+        var g = img.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        g.setColor(new Color(100, 100, 100));
+        g.fillOval(2, 2, ICON_SIZE - 4, ICON_SIZE - 4);
+
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("SansSerif", Font.BOLD, 16));
+        var fm = g.getFontMetrics();
+        var text = "?";
+        var x = (ICON_SIZE - fm.stringWidth(text)) / 2;
+        var y = (ICON_SIZE + fm.getAscent() - fm.getDescent()) / 2;
+        g.drawString(text, x, y);
+
+        g.dispose();
+        return img;
     }
 
     private Image resize(BufferedImage img) {
