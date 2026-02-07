@@ -8,6 +8,7 @@ import com.github.kwhat.jnativehook.mouse.NativeMouseEvent;
 import com.github.kwhat.jnativehook.mouse.NativeMouseInputListener;
 import io.loom.app.config.AppPreferences;
 import io.loom.app.windows.MainWindow;
+import io.loom.app.windows.SettingsWindow;
 import lombok.Getter;
 
 import javax.swing.*;
@@ -25,6 +26,7 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
     private static final int MOUSE_OFFSET = 10_000;
 
     private final MainWindow mainWindow;
+    private final SettingsWindow settingsWindow;
     private final AppPreferences appPreferences;
 
     private final Set<Integer> pressedKeys = Collections.synchronizedSet(new HashSet<>());
@@ -40,9 +42,10 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
     @Getter
     private boolean initialized = false;
 
-    public GlobalHotkeyManager(MainWindow mainWindow, AppPreferences appPreferences) {
+    public GlobalHotkeyManager(MainWindow mainWindow, SettingsWindow settingsWindow, AppPreferences appPreferences) {
         this.mainWindow = mainWindow;
         this.appPreferences = appPreferences;
+        this.settingsWindow = settingsWindow;
 
         Logger logger = Logger.getLogger(GlobalScreen.class.getPackage().getName());
         logger.setLevel(Level.OFF);
@@ -117,6 +120,10 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
     }
 
     private void toggleWindow() {
+        if (settingsWindow != null && settingsWindow.isOpen()) {
+            settingsWindow.close();
+        }
+
         if (mainWindow.isVisible() && mainWindow.isActive()) {
             mainWindow.setVisible(false);
         } else {

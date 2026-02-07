@@ -235,7 +235,7 @@ public class MainWindow extends JFrame {
             rootPanel.add(cefWebView, BorderLayout.CENTER);
 
             try {
-                globalHotkeyManager = new GlobalHotkeyManager(this, appPreferences);
+                globalHotkeyManager = new GlobalHotkeyManager(this, settingsWindow, appPreferences);
                 globalHotkeyManager.start();
                 log.info("Global hotkey manager initialized");
             } catch (Exception | UnsatisfiedLinkError e) {
@@ -299,7 +299,7 @@ public class MainWindow extends JFrame {
             rootPanel.add(cefWebView, BorderLayout.CENTER);
 
             try {
-                globalHotkeyManager = new GlobalHotkeyManager(this, appPreferences);
+                globalHotkeyManager = new GlobalHotkeyManager(this, settingsWindow, appPreferences);
                 globalHotkeyManager.start();
                 log.info("Global hotkey manager initialized");
             } catch (Exception | UnsatisfiedLinkError e) {
