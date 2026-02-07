@@ -1,234 +1,166 @@
 package io.loom.app.ui.settings;
 
+import io.loom.app.config.AiConfiguration;
 import io.loom.app.config.AppPreferences;
 import io.loom.app.ui.Theme;
-import io.loom.app.ui.settings.components.AnimatedSettingsButton;
 import io.loom.app.ui.settings.components.AnimatedToggleSwitch;
-import io.loom.app.ui.settings.components.ColorfulButton;
+import io.loom.app.ui.settings.components.ClearCookiesButton;
+import io.loom.app.ui.settings.components.DonationSection;
+import io.loom.app.ui.settings.components.GithubLinkPanel;
+import io.loom.app.ui.settings.components.HotkeySection;
+import io.loom.app.ui.settings.components.ProvidersManagementPanel;
+import io.loom.app.ui.settings.components.ResetProvidersPanel;
+import io.loom.app.ui.settings.components.SettingsRow;
+import io.loom.app.ui.settings.components.SettingsSection;
 import io.loom.app.utils.GlobalHotkeyManager;
-import io.loom.app.utils.SystemUtils;
 import io.loom.app.utils.UpdateChecker;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.net.URI;
 import java.util.function.Consumer;
 
 @Slf4j
 public class SettingsPanel extends JPanel {
+
+    private static final int SECTION_GAP = 20;
+    private static final int ROW_GAP = 8;
+    private static final int SUB_SECTION_GAP = 12;
 
     @Setter
     private Consumer<Boolean> onRememberLastAiChanged;
     @Setter
     private Runnable onClearCookies;
     @Setter
+    private Runnable onProvidersChanged;
+    @Setter
     private Consumer<Boolean> onZoomEnabledChanged;
     @Setter
     private Consumer<Boolean> onAutoUpdateChanged;
 
     private final AppPreferences appPreferences;
+    private final AiConfiguration aiConfiguration;
     private final GlobalHotkeyManager hotkeyManager;
-    private AnimatedSettingsButton hotkeyRecordBtn;
 
-    public SettingsPanel(AppPreferences appPreferences, GlobalHotkeyManager hotkeyManager) {
+    public SettingsPanel(AppPreferences appPreferences, GlobalHotkeyManager hotkeyManager, AiConfiguration aiConfiguration) {
         this.appPreferences = appPreferences;
         this.hotkeyManager = hotkeyManager;
+        this.aiConfiguration = aiConfiguration;
 
-        setOpaque(true);
-        setBackground(Theme.BG_BAR);
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setAlignmentX(Component.LEFT_ALIGNMENT);
-        setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
+        initLayout();
+        buildUI();
 
-        addDonationSection();
-        add(Box.createVerticalStrut(20));
+        if (appPreferences.isCheckUpdatesOnStartupEnabled()) {
+            SwingUtilities.invokeLater(() -> UpdateChecker.check(this));
+        }
+    }
 
-        buildSection("General", appPreferences.isRememberLastAi(), onRememberLastAiChanged, "Remember last used AI");
+    private void initLayout() {
+        this.setOpaque(true);
+        this.setBackground(Theme.BG_BAR);
+        this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        this.setAlignmentX(Component.LEFT_ALIGNMENT);
+        this.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
+    }
 
-        var autoStartToggle = new AnimatedToggleSwitch(appPreferences.isAutoStartEnabled());
-        autoStartToggle.setOnChange(appPreferences::setAutoStartEnabled);
-        addSettingRow("Run on System Startup", autoStartToggle);
+    private void buildUI() {
+        this.add(new DonationSection());
+        this.add(Box.createVerticalStrut(SECTION_GAP));
 
-        var startApplicationHiddenToggle = new AnimatedToggleSwitch(appPreferences.isStartApplicationHiddenEnabled());
-        startApplicationHiddenToggle.setOnChange(appPreferences::setStartApplicationHiddenEnabled);
-        addSettingRow("Run the application in the background", startApplicationHiddenToggle);
+        buildProvidersSection();
+        this.add(Box.createVerticalStrut(SECTION_GAP));
 
-        var updateToggle = new AnimatedToggleSwitch(appPreferences.isCheckUpdatesOnStartupEnabled());
-        updateToggle.setOnChange(val -> {
-            appPreferences.setCheckUpdatesOnStartup(val);
-            if (onAutoUpdateChanged != null) onAutoUpdateChanged.accept(val);
-        });
-        addSettingRow("Check for Updates automatically", updateToggle);
-
-        add(Box.createVerticalStrut(16));
+        buildGeneralSection();
+        this.add(Box.createVerticalStrut(16));
 
         if (hotkeyManager != null) {
-            addSection("Global Hotkey");
-            addHotkeySection();
+            buildHotkeySection();
             add(Box.createVerticalStrut(16));
         }
 
-        buildSection("Browser", appPreferences.isZoomEnabled(), onZoomEnabledChanged, "Zoom enabled");
-        var darkModeEnabledToggle = new AnimatedToggleSwitch(appPreferences.isDarkModeEnabled());
-        darkModeEnabledToggle.setOnChange(appPreferences::setDarkModeEnabled);
-        addSettingRow("Try to request dark mode from websites (restart required)", darkModeEnabledToggle);
-        add(Box.createVerticalStrut(12));
+        buildBrowserSection();
+        this.add(Box.createVerticalStrut(SUB_SECTION_GAP));
 
-        var buttonsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        buttonsRow.setOpaque(false);
-        buttonsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        buttonsRow.setMaximumSize(new Dimension(Short.MAX_VALUE, 40));
+        this.add(new ClearCookiesButton(onClearCookies));
+        this.add(Box.createVerticalGlue());
+        this.add(Box.createVerticalStrut(SECTION_GAP));
 
-        var clearCookiesBtn = new AnimatedSettingsButton("Clear cookies", () -> {
-            if (onClearCookies != null) onClearCookies.run();
-        });
-        buttonsRow.add(clearCookiesBtn);
-        add(buttonsRow);
-
-        add(Box.createVerticalGlue());
-        add(Box.createVerticalStrut(20));
-        addGithubLink();
-        add(Box.createVerticalStrut(5));
-
-        if (appPreferences.isCheckUpdatesOnStartupEnabled()) {
-            UpdateChecker.check(this);
-        }
+        this.add(new GithubLinkPanel());
+        this.add(Box.createVerticalStrut(5));
     }
 
-    private void addGithubLink() {
-        var footerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        footerPanel.setOpaque(false);
-        footerPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        footerPanel.setMaximumSize(new Dimension(Short.MAX_VALUE, 30));
-
-        var label = new JLabel("Loom application on Github (v %s)".formatted(SystemUtils.VERSION));
-        label.setFont(Theme.FONT_SETTINGS.deriveFont(11f));
-        label.setForeground(Theme.TEXT_TERTIARY);
-        label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-        label.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                openLink("https://github.com/oldvalencia/loom");
-            }
-
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                label.setForeground(Theme.TEXT_SECONDARY);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                label.setForeground(Theme.TEXT_TERTIARY);
-            }
-        });
-
-        footerPanel.add(label);
-        add(footerPanel);
+    private void buildProvidersSection() {
+        this.add(new ProvidersManagementPanel(
+                aiConfiguration.getCustomProvidersManager(),
+                v -> {
+                    aiConfiguration.reload();
+                    if (onProvidersChanged != null) {
+                        onProvidersChanged.run();
+                    }
+                }
+        ));
+        this.add(new ResetProvidersPanel(aiConfiguration, onProvidersChanged));
     }
 
-    private void addHotkeySection() {
-        var row = new JPanel();
-        row.setOpaque(false);
-        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-        row.setMaximumSize(new Dimension(Short.MAX_VALUE, 40));
+    private void buildGeneralSection() {
+        addSectionHeader("General");
 
-        var label = new JLabel("Toggle Window Shortcut");
-        label.setFont(Theme.FONT_SETTINGS);
-        label.setForeground(Theme.TEXT_PRIMARY);
-
-        var currentHotkey = GlobalHotkeyManager.getHotkeyText(appPreferences.getHotkeyToStartApplication());
-
-        hotkeyRecordBtn = new AnimatedSettingsButton(currentHotkey.isEmpty() ? "Click to Record" : currentHotkey, () -> {
-            if (hotkeyManager != null) {
-                hotkeyRecordBtn.setText("Press keys... (Esc to cancel)");
-                hotkeyManager.startRecording(() -> {
-                    var newHotkey = GlobalHotkeyManager.getHotkeyText(appPreferences.getHotkeyToStartApplication());
-                    hotkeyRecordBtn.setText(newHotkey);
+        addToggleRow("Remember last used AI",
+                appPreferences.isRememberLastAi(),
+                val -> {
+                    if (onRememberLastAiChanged != null) onRememberLastAiChanged.accept(val);
                 });
-            }
-        });
 
-        var resetColor = new Color(255, 94, 91);
-        var resetBtn = new ColorfulButton("✖", resetColor, () -> {
-            if (hotkeyManager != null) {
-                hotkeyManager.clearHotkey();
-                hotkeyRecordBtn.setText("None");
-            }
-        });
+        addToggleRow("Run on System Startup",
+                appPreferences.isAutoStartEnabled(),
+                appPreferences::setAutoStartEnabled);
 
-        row.add(label);
-        row.add(Box.createHorizontalGlue());
-        row.add(hotkeyRecordBtn);
-        row.add(Box.createHorizontalStrut(8));
-        row.add(resetBtn);
-        add(row);
+        addToggleRow("Run the application in the background",
+                appPreferences.isStartApplicationHiddenEnabled(),
+                appPreferences::setStartApplicationHiddenEnabled);
+
+        addToggleRow("Check for Updates automatically",
+                appPreferences.isCheckUpdatesOnStartupEnabled(),
+                val -> {
+                    appPreferences.setCheckUpdatesOnStartup(val);
+                    if (onAutoUpdateChanged != null) onAutoUpdateChanged.accept(val);
+                });
     }
 
-    private void addDonationSection() {
-        var buttonsRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        buttonsRow.setOpaque(false);
-        buttonsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        buttonsRow.setMaximumSize(new Dimension(Short.MAX_VALUE, 40));
-
-        var coffeeColor = new Color(255, 200, 0);
-        var kofiColor = new Color(255, 94, 91);
-
-        buttonsRow.add(new ColorfulButton("☕ Buy me a coffee", coffeeColor,
-                () -> openLink("https://buymeacoffee.com/oldvalencia")));
-
-        buttonsRow.add(new ColorfulButton("❤️ Ko-Fi", kofiColor,
-                () -> openLink("https://ko-fi.com/oldvalencia")));
-
-        add(buttonsRow);
+    private void buildHotkeySection() {
+        addSectionHeader("Global Hotkey");
+        add(new HotkeySection(appPreferences, hotkeyManager));
     }
 
-    private void openLink(String url) {
-        try {
-            Desktop.getDesktop().browse(new URI(url));
-        } catch (Exception e) {
-            log.error("Error opening link", e);
-        }
+    private void buildBrowserSection() {
+        addSectionHeader("Browser");
+
+        addToggleRow("Zoom enabled",
+                appPreferences.isZoomEnabled(),
+                val -> {
+                    if (onZoomEnabledChanged != null) onZoomEnabledChanged.accept(val);
+                });
+
+        addToggleRow("Try to request dark mode from websites (restart required)",
+                appPreferences.isDarkModeEnabled(),
+                appPreferences::setDarkModeEnabled);
     }
 
-    private void buildSection(String title, boolean toggleVal, Consumer<Boolean> onChanged, String rowString) {
-        addSection(title);
-        var toggle = new AnimatedToggleSwitch(toggleVal);
-        toggle.setOnChange(val -> {
-            if (onChanged != null) onChanged.accept(val);
-        });
-        addSettingRow(rowString, toggle);
+    private void addSectionHeader(String title) {
+        this.add(new SettingsSection(title));
+        this.add(Box.createVerticalStrut(10));
     }
 
-    private void addSection(String title) {
-        var label = new JLabel(title.toUpperCase());
-        label.setFont(Theme.FONT_SETTINGS_SECTION);
-        label.setForeground(Theme.TEXT_TERTIARY);
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        add(label);
-        add(Box.createVerticalStrut(10));
+    private void addToggleRow(String labelText, boolean initialValue, Consumer<Boolean> onChange) {
+        var toggle = new AnimatedToggleSwitch(initialValue);
+        toggle.setOnChange(onChange);
+
+        addSettingRow(labelText, toggle);
     }
 
     private void addSettingRow(String labelText, JComponent control) {
-        var row = new JPanel();
-        row.setOpaque(false);
-        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-        row.setMaximumSize(new Dimension(Short.MAX_VALUE, 30));
-
-        var label = new JLabel(labelText);
-        label.setFont(Theme.FONT_SETTINGS);
-        label.setForeground(Theme.TEXT_PRIMARY);
-
-        row.add(label);
-        row.add(Box.createHorizontalGlue());
-        row.add(control);
-        add(row);
-        add(Box.createVerticalStrut(8));
+        this.add(new SettingsRow(labelText, control));
+        this.add(Box.createVerticalStrut(ROW_GAP));
     }
 }

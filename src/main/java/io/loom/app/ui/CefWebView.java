@@ -33,14 +33,12 @@ import java.awt.event.ComponentEvent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.function.Consumer;
 
 @Slf4j
 public class CefWebView extends JPanel {
 
-    private final File BASE_DIR_FILE = resolveDataDirectory();
-    private final String BASE_DIR = BASE_DIR_FILE.getAbsolutePath();
+    private final String BASE_DIR = AppPreferences.DATA_DIR.getAbsolutePath();
 
     private final String LOGS_DIR = LogSetup.LOGS_DIR;
     private final String INSTALL_DIR = new File(BASE_DIR, "jcef-bundle").getAbsolutePath();
@@ -60,6 +58,7 @@ public class CefWebView extends JPanel {
 
     private final AppPreferences appPreferences;
     private final Runnable onToggleSettings;
+    private final Consumer<String> onProgressUpdate;
 
     @Setter
     private Consumer<Double> zoomCallback;
@@ -72,10 +71,11 @@ public class CefWebView extends JPanel {
     private MemoryMonitor memoryMonitor;
     private double currentZoomLevel;
 
-    public CefWebView(String startUrl, AppPreferences appPreferences, Runnable onToggleSettings) {
+    public CefWebView(String startUrl, AppPreferences appPreferences, Runnable onToggleSettings, Consumer<String> onProgressUpdate) {
         this.appPreferences = appPreferences;
         this.currentZoomLevel = appPreferences.getLastZoomValue();
         this.onToggleSettings = onToggleSettings;
+        this.onProgressUpdate = onProgressUpdate;
 
         setLayout(new BorderLayout());
         setBackground(Theme.BG_DEEP);
@@ -93,21 +93,6 @@ public class CefWebView extends JPanel {
 
         smartClean();
         initCef(startUrl);
-    }
-
-    private File resolveDataDirectory() {
-        var userHome = System.getProperty("user.home");
-        var os = System.getProperty("os.name", "").toLowerCase();
-
-        File dataDir;
-        if (os.contains("mac")) {
-            // macOS: ~/Library/Application Support/Loom
-            dataDir = Paths.get(userHome, "Library", "Application Support", "Loom").toFile();
-        } else {
-            // Windows/Linux: ~/.loom
-            dataDir = Paths.get(userHome, ".loom").toFile();
-        }
-        return dataDir;
     }
 
     public void setCurrentConfig(AiConfiguration.AiConfig currentConfig) {
@@ -128,17 +113,22 @@ public class CefWebView extends JPanel {
 
         browser.close(true);
         browser = null;
-        browser = client.createBrowser(urlToRestore, false, false);
+        System.gc();
 
-        var newBrowserUI = browser.getUIComponent();
-        newBrowserUI.setBounds(0, 0, getWidth(), getHeight());
-        layeredPane.add(newBrowserUI, JLayeredPane.DEFAULT_LAYER);
+        // Small delay to ensure cleanup
+        SwingUtilities.invokeLater(() -> {
+            browser = client.createBrowser(urlToRestore, false, false);
 
-        updateLayerBounds();
-        layeredPane.revalidate();
-        layeredPane.repaint();
+            var newBrowserUI = browser.getUIComponent();
+            newBrowserUI.setBounds(0, 0, getWidth(), getHeight());
+            layeredPane.add(newBrowserUI, JLayeredPane.DEFAULT_LAYER);
 
-        log.info("Browser engine restarted.");
+            updateLayerBounds();
+            layeredPane.revalidate();
+            layeredPane.repaint();
+
+            log.info("Browser engine restarted.");
+        });
     }
 
     private void updateLayerBounds() {
@@ -180,7 +170,8 @@ public class CefWebView extends JPanel {
                 for (var f : files) {
                     var name = f.getName();
                     if (name.equals("Cache") || name.equals("Code Cache") ||
-                            name.equals("GPUCache") || name.equals("ScriptCache")) {
+                        name.equals("GPUCache") || name.equals("ScriptCache") ||
+                        name.equals("Service Worker") || name.equals("blob_storage")) {
                         deleteDirectory(f);
                     }
                 }
@@ -214,13 +205,25 @@ public class CefWebView extends JPanel {
             }
             builder.setInstallDir(installDirFile);
 
-            memoryMonitor = new MemoryMonitor(browser);
-            memoryMonitor.start();
-            memoryMonitor.logMemoryStats();
+            builder.setProgressHandler((state, percent) -> {
+                var statusText = switch (state) {
+                    case LOCATING -> "Locating browser engine...";
+                    case DOWNLOADING -> "Downloading browser engine... " + Math.round(percent) + "%";
+                    case EXTRACTING -> "Extracting browser engine... " + Math.round(percent * -100) + "%";
+                    case INSTALL -> "Installing browser engine...";
+                    default -> "Initializing...";
+                };
 
+                if (onProgressUpdate != null) {
+                    SwingUtilities.invokeLater(() -> onProgressUpdate.accept(statusText));
+                }
+                log.info("CEF Init Progress: {} - {}%", state, percent);
+            });
+
+            // Reduced renderer processes and memory limits
             builder.addJcefArgs("--renderer-process-limit=1");
             builder.addJcefArgs("--process-per-site");
-            builder.addJcefArgs("--disk-cache-size=5242880");  // 5MB
+            builder.addJcefArgs("--disk-cache-size=3145728");  // 3MB
             builder.addJcefArgs("--disable-gpu-shader-disk-cache");
             builder.addJcefArgs("--enable-low-end-device-mode");
             builder.addJcefArgs("--aggressive-cache-discard");
@@ -233,10 +236,13 @@ public class CefWebView extends JPanel {
             builder.addJcefArgs("--disable-accelerated-video-decode");
             builder.addJcefArgs("--disable-software-rasterizer");
             builder.addJcefArgs("--disable-dev-shm-usage");
-            builder.addJcefArgs("--js-flags=--max-old-space-size=96");
-            builder.addJcefArgs("--js-flags=--initial-heap-size=16");
+
+            // Reduced JS heap size
+            builder.addJcefArgs("--js-flags=--max-old-space-size=64");
+            builder.addJcefArgs("--js-flags=--initial-heap-size=8");
             builder.addJcefArgs("--js-flags=--optimize-for-size");
             builder.addJcefArgs("--js-flags=--expose-gc");
+
             builder.addJcefArgs("--disable-http-cache");
             builder.addJcefArgs("--disable-features=AutofillServerCommunication");
             builder.addJcefArgs("--disable-features=TranslateUI");
@@ -244,6 +250,10 @@ public class CefWebView extends JPanel {
             builder.addJcefArgs("--disable-skia-runtime-opts");
             builder.addJcefArgs("--disable-lcd-text");
             builder.addJcefArgs("--disable-image-animation-resync");
+
+            // Memory pressure handling
+            builder.addJcefArgs("--enable-features=MemoryPressureBased");
+
             if (appPreferences.isDarkModeEnabled()) {
                 builder.addJcefArgs("--force-dark-mode");
                 builder.addJcefArgs("--enable-features=WebUIDarkMode");
@@ -253,6 +263,10 @@ public class CefWebView extends JPanel {
 
             configureSettings(builder);
 
+            if (onProgressUpdate != null) {
+                onProgressUpdate.accept("Building browser engine...");
+            }
+
             var app = builder.build();
             client = app.createClient();
 
@@ -261,13 +275,23 @@ public class CefWebView extends JPanel {
             setupLoadHandler();
             setupContextMenuHandler();
 
+            if (onProgressUpdate != null) {
+                onProgressUpdate.accept("Creating browser window...");
+            }
+
             browser = client.createBrowser(startUrl, false, false);
 
             var browserUI = browser.getUIComponent();
             layeredPane.add(browserUI, JLayeredPane.DEFAULT_LAYER);
 
+            memoryMonitor = new MemoryMonitor(browser);
+            memoryMonitor.start();
+
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
+                    if (memoryMonitor != null) {
+                        memoryMonitor.stop();
+                    }
                     CefApp.getInstance().dispose();
                 } catch (Exception ignored) {
                 }
@@ -405,13 +429,17 @@ public class CefWebView extends JPanel {
     public void dispose() {
         if (memoryMonitor != null) {
             memoryMonitor.stop();
+            memoryMonitor = null;
         }
         if (browser != null) {
             browser.close(true);
+            browser = null;
         }
         if (client != null) {
             client.dispose();
+            client = null;
         }
+        System.gc();
     }
 
     private void loadUrl(String url) {

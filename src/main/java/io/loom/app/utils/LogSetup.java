@@ -1,5 +1,6 @@
 package io.loom.app.utils;
 
+import io.loom.app.config.AppPreferences;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -12,8 +13,7 @@ import java.util.Date;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class LogSetup {
 
-    public static final String APP_DIR = System.getProperty("user.home") + File.separator + ".loom";
-    public static final String LOGS_DIR = APP_DIR + File.separator + "logs";
+    public static final String LOGS_DIR = new File(AppPreferences.DATA_DIR, "logs").getAbsolutePath();
     private static final int MAX_LOG_FILES = 3;
     private static final long CEF_LOG_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
@@ -28,6 +28,7 @@ public class LogSetup {
         var timestamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date());
         var logFileName = "app-" + timestamp;
         System.setProperty("log.name", logFileName);
+        System.setProperty("log.dir", LOGS_DIR);
     }
 
     static void rotateCefLog(File dir) {

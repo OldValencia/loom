@@ -20,29 +20,41 @@ def junitVersion = '5.10.2'
 def lombokVersion = '1.18.42'
 def flatLafVersion = '3.7'
 def javaOpts = [
-        '-Xms64m',
-        '-Xmx512m',
-        '-Xss2m',
+        '-Xms32m',
+        '-Xmx384m',
+        '-Xss1m',
 
-        '-XX:MaxMetaspaceSize=128m',
-        '-XX:MetaspaceSize=32m',
-        '-XX:CompressedClassSpaceSize=16m',
+        // Metaspace settings
+        '-XX:MaxMetaspaceSize=96m',
+        '-XX:MetaspaceSize=24m',
+        '-XX:CompressedClassSpaceSize=12m',
 
         '-XX:+UseG1GC',
-        '-XX:MinHeapFreeRatio=10',
-        '-XX:MaxHeapFreeRatio=40',
+        '-XX:MinHeapFreeRatio=5',
+        '-XX:MaxHeapFreeRatio=25',
         '-XX:GCTimeRatio=19',
+        '-XX:G1HeapRegionSize=1m',
+        '-XX:InitiatingHeapOccupancyPercent=35',
 
+        // String optimization
         '-XX:+UseStringDeduplication',
         '-XX:StringTableSize=60013',
-        '-XX:+TieredCompilation',
 
-        // experimental
+        // Compilation settings
+        '-XX:+TieredCompilation',
+        '-XX:TieredStopAtLevel=1',
+
+        // Experimental optimizations
         '-XX:+OptimizeStringConcat',
         '-XX:+UseCompressedOops',
+        '-XX:+UseCompressedClassPointers',
 
+        // Graphics settings
         '-Dsun.java2d.noddraw=true',
+        '-Dsun.java2d.d3d=false',
+        '-Dsun.java2d.opengl=false',
 
+        // Module access
         '--add-exports=java.base/java.lang=ALL-UNNAMED',
         '--add-exports=java.desktop/sun.awt=ALL-UNNAMED',
         '--add-exports=java.desktop/sun.java2d=ALL-UNNAMED',
@@ -69,13 +81,13 @@ application {
 
 dependencies {
     implementation 'me.friwi:jcefmaven:141.0.10'
-    implementation 'org.yaml:snakeyaml:2.2'
     implementation 'com.github.weisj:jsvg:2.0.0'
     implementation "com.formdev:flatlaf:$flatLafVersion"
     implementation "com.formdev:flatlaf-extras:$flatLafVersion"
     implementation 'org.slf4j:slf4j-api:2.0.17'
     implementation 'ch.qos.logback:logback-classic:1.5.27'
     implementation 'org.apache.commons:commons-collections4:4.5.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.0'
 
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'com.github.kwhat:jnativehook:2.2.2'
@@ -127,13 +139,13 @@ tasks.register('createInstaller', Exec) {
                 '-Dsun.java2d.opengl=true',
                 '-Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine'
         ]
-        
+
         macOptions = [
-            '--mac-package-identifier', 'io.loom.app',
-            '--mac-package-name', 'Loom',
-            '--mac-entitlements', 'src/main/resources/mac/entitlements.plist'
+                '--mac-package-identifier', 'io.loom.app',
+                '--mac-package-name', 'Loom',
+                '--mac-entitlements', 'src/main/resources/mac/entitlements.plist'
         ]
-        
+
         if (version.toString().startsWith("0.")) {
             appVersion = "1" + version.toString().substring(1)
             println "MacOS requires version >= 1. Patching installer version to: $appVersion"

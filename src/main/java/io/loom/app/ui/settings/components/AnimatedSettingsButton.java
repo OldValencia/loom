@@ -1,7 +1,6 @@
 package io.loom.app.ui.settings.components;
 
 import io.loom.app.ui.Theme;
-import lombok.Setter;
 
 import javax.swing.*;
 import java.awt.*;
@@ -9,7 +8,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 
-public class AnimatedSettingsButton extends JPanel {
+class AnimatedSettingsButton extends JPanel {
 
     private String text;
     private final Timer animTimer;
@@ -17,12 +16,12 @@ public class AnimatedSettingsButton extends JPanel {
     private float hoverProgress = 0f;
     private boolean hovered = false;
 
-    public void setText(String text) {
+    void setText(String text) {
         this.text = text;
         this.tick();
     }
 
-    public AnimatedSettingsButton(String text, Runnable action) {
+    AnimatedSettingsButton(String text, Runnable action) {
         this.text = text;
 
         setOpaque(false);

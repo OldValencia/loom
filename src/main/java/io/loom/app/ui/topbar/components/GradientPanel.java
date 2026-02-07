@@ -11,6 +11,9 @@ public class GradientPanel extends JPanel {
     private Color accentColor = Theme.ACCENT;
     private LinearGradientPaint cachedGradientLeft;
     private LinearGradientPaint cachedGradientFade;
+    private RoundRectangle2D.Float cachedShape;
+    private int lastWidth = -1;
+    private int lastHeight = -1;
 
     public GradientPanel() {
         setOpaque(false);
@@ -18,6 +21,9 @@ public class GradientPanel extends JPanel {
     }
 
     public void setAccentColor(Color c) {
+        if (this.accentColor.equals(c)) {
+            return;
+        }
         this.accentColor = c;
         rebuildGradients();
         repaint();
@@ -52,17 +58,22 @@ public class GradientPanel extends JPanel {
         var w = getWidth();
         var h = getHeight();
 
+        if (cachedShape == null || lastWidth != w || lastHeight != h) {
+            cachedShape = new RoundRectangle2D.Float(0, 0, w, h, 14, 14);
+            lastWidth = w;
+            lastHeight = h;
+        }
+
         g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC));
         g.setColor(new Color(0, 0, 0, 0));
         g.fillRect(0, 0, w, h);
 
         g.setColor(Theme.BG_BAR);
-        var shape = new RoundRectangle2D.Float(0, 0, w, h, 14, 14);
-        g.fill(shape);
+        g.fill(cachedShape);
 
         g.setComposite(AlphaComposite.SrcOver);
         var oldClip = g.getClip();
-        g.setClip(shape);
+        g.setClip(cachedShape);
 
         g.setPaint(cachedGradientLeft);
         g.fillRect(0, 0, 50, h);

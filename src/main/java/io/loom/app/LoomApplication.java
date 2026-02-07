@@ -25,8 +25,8 @@ public class LoomApplication {
 
         setupCookies();
 
-        var aiConfiguration = new AiConfiguration();
         var appPreferences = new AppPreferences();
+        var aiConfiguration = new AiConfiguration(appPreferences);
 
         SwingUtilities.invokeLater(() -> {
             try {

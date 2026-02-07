@@ -8,9 +8,11 @@ import com.github.kwhat.jnativehook.mouse.NativeMouseEvent;
 import com.github.kwhat.jnativehook.mouse.NativeMouseInputListener;
 import io.loom.app.config.AppPreferences;
 import io.loom.app.windows.MainWindow;
+import lombok.Getter;
 
 import javax.swing.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -25,15 +27,18 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
     private final MainWindow mainWindow;
     private final AppPreferences appPreferences;
 
-    private final Set<Integer> pressedKeys = new HashSet<>();
+    private final Set<Integer> pressedKeys = Collections.synchronizedSet(new HashSet<>());
 
-    private boolean recording = false;
+    private volatile boolean recording = false;
     private Runnable onRecordComplete;
 
     private boolean hotkeyTriggered = false;
     private long lastEventTime = System.currentTimeMillis();
 
     private final Timer watchdogTimer;
+
+    @Getter
+    private boolean initialized = false;
 
     public GlobalHotkeyManager(MainWindow mainWindow, AppPreferences appPreferences) {
         this.mainWindow = mainWindow;
@@ -57,23 +62,31 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
             GlobalScreen.addNativeKeyListener(this);
             GlobalScreen.addNativeMouseListener(this);
             watchdogTimer.start();
+            initialized = true;
         } catch (NativeHookException e) {
-            e.printStackTrace();
+            initialized = false;
         }
     }
 
     public void stop() {
+        if (!initialized) {
+            return;
+        }
+
         try {
             watchdogTimer.stop();
             GlobalScreen.removeNativeKeyListener(this);
             GlobalScreen.removeNativeMouseListener(this);
             GlobalScreen.unregisterNativeHook();
-        } catch (NativeHookException e) {
-            e.printStackTrace();
+        } catch (NativeHookException ignored) {
         }
     }
 
     public void startRecording(Runnable onRecordComplete) {
+        if (!initialized) {
+            return;
+        }
+
         this.onRecordComplete = onRecordComplete;
         recording = false;
         pressedKeys.clear();
@@ -95,9 +108,11 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
         var saved = appPreferences.getHotkeyToStartApplication();
         if (saved == null || saved.isEmpty()) return;
 
-        if (pressedKeys.containsAll(saved)) {
-            hotkeyTriggered = true;
-            SwingUtilities.invokeLater(this::toggleWindow);
+        synchronized (pressedKeys) {
+            if (pressedKeys.containsAll(saved)) {
+                hotkeyTriggered = true;
+                SwingUtilities.invokeLater(this::toggleWindow);
+            }
         }
     }
 
@@ -168,10 +183,10 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
         int code = MOUSE_OFFSET + e.getButton();
 
         if (recording) {
-            boolean simpleClick =
-                    pressedKeys.size() == 1 &&
-                            (pressedKeys.contains(MOUSE_OFFSET + 1)
-                                    || pressedKeys.contains(MOUSE_OFFSET + 2));
+            boolean simpleClick;
+            synchronized (pressedKeys) {
+                simpleClick = pressedKeys.size() == 1 && (pressedKeys.contains(MOUSE_OFFSET + 1) || pressedKeys.contains(MOUSE_OFFSET + 2));
+            }
 
             if (!pressedKeys.isEmpty() && !simpleClick) {
                 finishRecording(true, false);
@@ -188,11 +203,12 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
         recording = false;
 
         if (save) {
-            if (forceClear || pressedKeys.isEmpty()) {
-                appPreferences.setHotkeyToStartApplication(null);
-            } else {
-                appPreferences.setHotkeyToStartApplication(
-                        new ArrayList<>(pressedKeys));
+            synchronized (pressedKeys) {
+                if (forceClear || pressedKeys.isEmpty()) {
+                    appPreferences.setHotkeyToStartApplication(null);
+                } else {
+                    appPreferences.setHotkeyToStartApplication(new ArrayList<>(pressedKeys));
+                }
             }
         }
 

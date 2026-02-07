@@ -10,17 +10,17 @@ public class SystemUtils {
     public static final String VERSION;
 
     static {
-        String v = null;
-        try (var is = SystemUtils.class.getResourceAsStream("/app.properties")) {
-            if (is != null) {
+        String version = null;
+        try (var inputStream = SystemUtils.class.getResourceAsStream("/app.properties")) {
+            if (inputStream != null) {
                 var props = new Properties();
-                props.load(is);
-                v = props.getProperty("version", "Dev-Build");
+                props.load(inputStream);
+                version = props.getProperty("version", "Dev-Build");
             }
         } catch (Exception e) {
             log.error("Failed to load app version", e);
         }
-        VERSION = v;
+        VERSION = version;
     }
 
 

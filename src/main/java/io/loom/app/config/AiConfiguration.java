@@ -1,31 +1,51 @@
 package io.loom.app.config;
 
 import lombok.Getter;
-import lombok.Setter;
-import org.yaml.snakeyaml.Yaml;
+import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
-@Getter
-@Setter
+@Slf4j
 public class AiConfiguration {
 
-    private List<AiConfig> configurations;
+    @Getter
+    private final CustomAiProvidersManager customProvidersManager;
 
-    public AiConfiguration() {
-        var yaml = new Yaml();
-        var inputStream = this.getClass()
-                .getClassLoader()
-                .getResourceAsStream("ai-configurations.yml");
+    @Getter
+    private List<AiConfig> configurations = new ArrayList<>();
 
-        Map<String, List<Map<String, String>>> obj = yaml.load(inputStream);
+    private final AppPreferences appPreferences;
 
-        this.configurations = obj.get("configurations").stream()
-                .map(m -> new AiConfig(m.get("name"), m.get("url"), m.get("icon"), m.get("color")))
-                .toList();
+    public AiConfiguration(AppPreferences appPreferences) {
+        this.appPreferences = appPreferences;
+        this.customProvidersManager = new CustomAiProvidersManager();
+        reload();
     }
 
-    public record AiConfig(String name, String url, String icon, String color) {
+    public void reload() {
+        this.configurations = customProvidersManager.loadProviders();
+        log.info("AiConfiguration loaded {} providers", configurations.size());
+
+        if (appPreferences != null) {
+            List<String> validUrls = configurations.stream()
+                    .map(AiConfig::url)
+                    .collect(Collectors.toList());
+            appPreferences.cleanupLastUrlIfNeeded(validUrls);
+        }
     }
+
+    public void resetToDefaults() {
+        customProvidersManager.restoreDefaults();
+        reload();
+    }
+
+    public record AiConfig(
+            String id,
+            String name,
+            String url,
+            String color,
+            String icon
+    ) {}
 }

@@ -1,6 +1,7 @@
 package io.loom.app.utils;
 
 import com.google.gson.JsonParser;
+import io.loom.app.ui.dialogs.UpdateDialog;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.swing.*;
@@ -37,14 +38,8 @@ public class UpdateChecker {
     }
 
     private static void showUpdateDialog(Component parent, String version, String url) {
-        var message = "New version " + version + " is available! Download now?";
-        var title = "Update Available";
-        var pane = new JOptionPane(message, JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION);
-        var dialog = pane.createDialog(parent, title);
-        dialog.setAlwaysOnTop(true);
-        dialog.setModal(true);
-        dialog.setVisible(true);
-        var selectedValue = pane.getValue();
+        var updateDialogResult = new UpdateDialog(version, parent);
+        var selectedValue = updateDialogResult.getValue();
 
         if (selectedValue instanceof Integer && (int) selectedValue == JOptionPane.YES_OPTION) {
             try {

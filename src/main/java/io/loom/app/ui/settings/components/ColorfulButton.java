@@ -11,7 +11,7 @@ import java.awt.font.TextLayout;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 
-public class ColorfulButton extends JPanel {
+class ColorfulButton extends JPanel {
 
     private final String text;
     private final Color accentColor;
@@ -19,7 +19,7 @@ public class ColorfulButton extends JPanel {
     private float hoverProgress = 0f;
     private boolean hovered = false;
 
-    public ColorfulButton(String text, Color accentColor, Runnable action) {
+    ColorfulButton(String text, Color accentColor, Runnable action) {
         this.text = text;
         this.accentColor = accentColor;
 
@@ -31,7 +31,8 @@ public class ColorfulButton extends JPanel {
 
         Font displayFont;
         if (SystemUtils.isMac()) {
-            displayFont = new Font(".AppleSystemUIFont", Font.PLAIN, 14);
+            var size = isIconMode ? 18 : 14;
+            displayFont = new Font(".AppleSystemUIFont", Font.PLAIN, size);
         } else if (SystemUtils.isWindows()) {
             displayFont = new Font("Segoe UI", Font.PLAIN, 13);
         } else {
