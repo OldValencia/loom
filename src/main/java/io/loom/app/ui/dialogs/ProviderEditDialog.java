@@ -15,7 +15,6 @@ public class ProviderEditDialog extends JDialog {
     @Getter
     private boolean confirmed = false;
 
-    // Заменили CustomProvider на AiConfiguration.AiConfig
     public ProviderEditDialog(Frame owner, AiConfiguration.AiConfig provider) {
         super(owner, provider == null ? "Add AI Provider" : "Edit AI Provider", true);
 
@@ -36,12 +35,12 @@ public class ProviderEditDialog extends JDialog {
         formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
 
         formPanel.add(createLabel("Provider Name:"));
-        nameField = createTextField(provider != null ? provider.name() : ""); // Используем record accessor
+        nameField = createTextField(provider != null ? provider.name() : "");
         formPanel.add(nameField);
         formPanel.add(Box.createVerticalStrut(12));
 
         formPanel.add(createLabel("Website URL:"));
-        urlField = createTextField(provider != null ? provider.url() : "https://"); // Используем record accessor
+        urlField = createTextField(provider != null ? provider.url() : "https://");
         formPanel.add(urlField);
         formPanel.add(Box.createVerticalStrut(8));
 

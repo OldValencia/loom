@@ -154,7 +154,6 @@ public class SettingsPanel extends JPanel {
         );
 
         providersPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        providersPanel.setMaximumSize(new Dimension(Short.MAX_VALUE, 300));
         add(providersPanel);
     }
 

@@ -41,13 +41,7 @@ public class ProvidersManagementPanel extends JPanel {
         providersList = new JPanel();
         providersList.setOpaque(false);
         providersList.setLayout(new BoxLayout(providersList, BoxLayout.Y_AXIS));
-
-        var scrollPane = new JScrollPane(providersList);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
-        scrollPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
-        add(scrollPane, BorderLayout.CENTER);
+        add(providersList, BorderLayout.CENTER);
 
         refreshProvidersList();
     }
@@ -71,18 +65,15 @@ public class ProvidersManagementPanel extends JPanel {
         providersList.removeAll();
 
         var allProviders = providersManager.loadProviders();
-        var customProviders = allProviders.stream()
-                .filter(p -> p.id().startsWith("custom_"))
-                .toList();
 
-        if (customProviders.isEmpty()) {
-            var emptyLabel = new JLabel("No custom providers yet. Click '+ Add' to create one.");
+        if (allProviders.isEmpty()) {
+            var emptyLabel = new JLabel("No providers available. Click '+ Add' to create a custom one.");
             emptyLabel.setFont(Theme.FONT_SETTINGS.deriveFont(12f));
             emptyLabel.setForeground(Theme.TEXT_TERTIARY);
             emptyLabel.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
             providersList.add(emptyLabel);
         } else {
-            for (var provider : customProviders) {
+            for (var provider : allProviders) {
                 providersList.add(createProviderItem(provider));
                 providersList.add(Box.createVerticalStrut(4));
             }
@@ -187,7 +178,7 @@ public class ProvidersManagementPanel extends JPanel {
         if (dialog.isConfirmed()) {
             var name = dialog.getProviderName();
             var url = dialog.getProviderUrl();
-            var color = String.format("#%06x", (int)(Math.random() * 0xFFFFFF));// random color for provider
+            var color = String.format("#%06x", (int)(Math.random() * 0xFFFFFF));
 
             var worker = new SwingWorker<Void, Void>() {
                 @Override

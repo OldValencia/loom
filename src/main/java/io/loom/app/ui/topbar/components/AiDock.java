@@ -34,6 +34,7 @@ public class AiDock extends JPanel {
     private static final int GAP = 8;
     private static final int ITEM_MARGIN = 6;
     private static final int DRAG_THRESHOLD = 10;
+    private static final int MAX_DOCK_WIDTH = 500;
     private static final Map<String, Image> ICON_CACHE = new ConcurrentHashMap<>();
 
     private final List<DockItem> dockItems = new ArrayList<>();
@@ -42,27 +43,56 @@ public class AiDock extends JPanel {
     private final Timer animationTimer;
 
     private final File userIconsDir;
+    private final JPanel dockContainer;
 
     private int selectedIndex = 0;
     private boolean isDragging = false;
     private int dragStartIndex = -1;
     private int pressX = -1;
     private int pressY = -1;
+    private boolean isMouseInside = false;
 
     public AiDock(List<AiConfiguration.AiConfig> configs, CefWebView cefWebView, AppPreferences appPreferences) {
         this.cefWebView = cefWebView;
         this.appPreferences = appPreferences;
 
         String userHome = System.getProperty("user.home");
-//        String os = System.getProperty("os.name", "").toLowerCase();
-//        if (os.contains("mac")) {
-//            this.userIconsDir = new File(userHome, "Library/Application Support/Loom/icons");
-//        } else {
         this.userIconsDir = new File(userHome, ".loom/icons");
-//        }
 
         setOpaque(false);
-        setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        setLayout(new BorderLayout());
+
+        dockContainer = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g0) {
+                var g = (Graphics2D) g0;
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+
+                int y = (getHeight() - ITEM_HEIGHT) / 2;
+                float currentX = 0;
+
+                for (var item : dockItems) {
+                    if (item.currentWidth > 1.0f) {
+                        drawDockItem(g, item, (int) currentX, y);
+                        currentX += item.currentWidth + ITEM_MARGIN;
+                    }
+                }
+            }
+        };
+        dockContainer.setOpaque(false);
+        dockContainer.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        var scrollPane = new JScrollPane(dockContainer);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setBorder(null);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        scrollPane.getHorizontalScrollBar().setPreferredSize(new Dimension(0, 3));
+        scrollPane.getHorizontalScrollBar().setUnitIncrement(16);
+        add(scrollPane, BorderLayout.CENTER);
 
         var orderedConfigs = applyCustomOrder(configs);
         var lastUrl = appPreferences.getLastUrl();
@@ -86,7 +116,9 @@ public class AiDock extends JPanel {
             preloadIcon(orderedConfigs.get(i));
         }
 
-        animationTimer = new Timer(10, e -> animate());
+        int timerDelay = System.getProperty("os.name", "").toLowerCase().contains("mac") ? 16 : 10;
+        animationTimer = new Timer(timerDelay, e -> animate());
+
         setupMouseListeners();
 
         calculateTargets(false);
@@ -139,18 +171,26 @@ public class AiDock extends JPanel {
         var mouseAdapter = new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                if (!isDragging) {
+                isMouseInside = true;
+                if (!isDragging && !animationTimer.isRunning()) {
                     animationTimer.start();
                 }
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
+                isMouseInside = false;
                 if (!isDragging) {
-                    for (var item : dockItems) {
-                        item.setHovered(false);
+                    // Проверяем, действительно ли мышь покинула область
+                    Point mousePos = e.getPoint();
+                    if (!dockContainer.contains(mousePos)) {
+                        for (var item : dockItems) {
+                            item.setHovered(false);
+                        }
+                        if (!animationTimer.isRunning()) {
+                            animationTimer.start();
+                        }
                     }
-                    animationTimer.start();
                 }
             }
 
@@ -173,7 +213,9 @@ public class AiDock extends JPanel {
                 if (!isDragging) {
                     if (Math.abs(e.getX() - pressX) > DRAG_THRESHOLD || Math.abs(e.getY() - pressY) > DRAG_THRESHOLD) {
                         isDragging = true;
-                        animationTimer.start();
+                        if (!animationTimer.isRunning()) {
+                            animationTimer.start();
+                        }
                     }
                 }
 
@@ -192,7 +234,9 @@ public class AiDock extends JPanel {
                     isDragging = false;
                     dragStartIndex = -1;
                     saveCurrentOrder();
-                    animationTimer.start();
+                    if (!animationTimer.isRunning()) {
+                        animationTimer.start();
+                    }
                 } else {
                     int index = getItemIndexAt(e.getX());
                     if (index != -1) {
@@ -203,13 +247,14 @@ public class AiDock extends JPanel {
 
             @Override
             public void mouseMoved(MouseEvent e) {
-                if (!isDragging) {
+                if (!isDragging && isMouseInside) {
                     handleMouseMove(e.getX());
                 }
             }
         };
-        addMouseListener(mouseAdapter);
-        addMouseMotionListener(mouseAdapter);
+
+        dockContainer.addMouseListener(mouseAdapter);
+        dockContainer.addMouseMotionListener(mouseAdapter);
     }
 
     private int getItemIndexAt(int x) {
@@ -257,7 +302,7 @@ public class AiDock extends JPanel {
             if (item.isSelected()) {
                 targetW = PAD + ICON_SIZE + GAP + getTextWidth(item.config.name()) + PAD;
             } else {
-                if (isDockHovered || isDragging) {
+                if (isDockHovered || isDragging || isMouseInside) {
                     if (isItemHovered) {
                         targetW = PAD + ICON_SIZE + GAP + getTextWidth(item.config.name()) + PAD;
                     } else {
@@ -273,14 +318,14 @@ public class AiDock extends JPanel {
 
     private void animate() {
         var needsRepaint = false;
-        var isDockHovered = (getMousePosition() != null) || isDragging;
+        var isDockHovered = isMouseInside || isDragging;
 
         calculateTargets(isDockHovered);
 
         for (var item : dockItems) {
             var diff = item.targetWidth - item.currentWidth;
             if (Math.abs(diff) > 0.5f) {
-                item.currentWidth += diff * 0.2f;
+                item.currentWidth += diff * 0.25f; // Немного медленнее для плавности
                 needsRepaint = true;
             } else {
                 item.currentWidth = item.targetWidth;
@@ -289,9 +334,13 @@ public class AiDock extends JPanel {
 
         if (needsRepaint) {
             revalidateWidth();
-            repaintParents();
-            Toolkit.getDefaultToolkit().sync();
-        } else if (!isDockHovered) {
+            dockContainer.repaint();
+
+            // Для macOS - принудительная синхронизация
+            if (System.getProperty("os.name", "").toLowerCase().contains("mac")) {
+                Toolkit.getDefaultToolkit().sync();
+            }
+        } else if (!isDockHovered && !isMouseInside) {
             animationTimer.stop();
         }
     }
@@ -304,7 +353,14 @@ public class AiDock extends JPanel {
                 totalW += ITEM_MARGIN;
             }
         }
-        setPreferredSize(new Dimension(totalW, 48));
+
+        // Ограничиваем максимальную ширину
+        int finalWidth = Math.min(totalW, MAX_DOCK_WIDTH);
+        dockContainer.setPreferredSize(new Dimension(totalW, 48));
+        setPreferredSize(new Dimension(finalWidth, 48));
+        setMaximumSize(new Dimension(MAX_DOCK_WIDTH, 48));
+
+        dockContainer.revalidate();
         revalidate();
     }
 
@@ -312,7 +368,6 @@ public class AiDock extends JPanel {
         var topBar = SwingUtilities.getAncestorOfClass(GradientPanel.class, this);
         if (topBar != null) {
             topBar.repaint();
-            Toolkit.getDefaultToolkit().sync();
         }
     }
 
@@ -326,7 +381,7 @@ public class AiDock extends JPanel {
                 changed = true;
             }
         }
-        if (changed) {
+        if (changed && !animationTimer.isRunning()) {
             animationTimer.start();
         }
     }
@@ -348,7 +403,9 @@ public class AiDock extends JPanel {
         }
 
         updateTopBarColor();
-        animationTimer.start();
+        if (!animationTimer.isRunning()) {
+            animationTimer.start();
+        }
     }
 
     private void updateTopBarColor() {
@@ -363,23 +420,6 @@ public class AiDock extends JPanel {
                 log.warn("Warning while trying to update topBarColor", e);
             }
             topBar.setAccentColor(accent);
-        }
-    }
-
-    @Override
-    protected void paintComponent(Graphics g0) {
-        var g = (Graphics2D) g0;
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-        int y = (getHeight() - ITEM_HEIGHT) / 2;
-        float currentX = 0;
-
-        for (var item : dockItems) {
-            if (item.currentWidth > 1.0f) {
-                drawDockItem(g, item, (int) currentX, y);
-                currentX += item.currentWidth + ITEM_MARGIN;
-            }
         }
     }
 
@@ -444,7 +484,6 @@ public class AiDock extends JPanel {
 
         ICON_CACHE.computeIfAbsent(cfg.icon(), key -> {
             try {
-                // 1. Сначала пробуем найти иконку в ресурсах JAR (для встроенных)
                 URL resourceUrl = AiDock.class.getResource("/icons/" + key);
                 if (resourceUrl != null) {
                     if (key.toLowerCase().endsWith(".svg")) {
@@ -455,12 +494,9 @@ public class AiDock extends JPanel {
                     }
                 }
 
-                // 2. Если в ресурсах нет, ищем в папке пользователя (для кастомных/скачанных)
-                // Даже встроенные могут быть скопированы сюда при сбросе
                 File userIconFile = new File(userIconsDir, key);
                 if (userIconFile.exists()) {
                     if (key.toLowerCase().endsWith(".svg")) {
-                        // FlatSVGIcon умеет грузить и из File через URI
                         var icon = new FlatSVGIcon(userIconFile);
                         return renderSvg(icon);
                     } else {
@@ -468,7 +504,6 @@ public class AiDock extends JPanel {
                     }
                 }
 
-                // 3. Если нигде нет
                 log.warn("Icon not found: {} (searched in resources and {})", key, userIconsDir.getAbsolutePath());
                 return createPlaceholderIcon();
 
@@ -484,6 +519,7 @@ public class AiDock extends JPanel {
         var img = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
         var g = img.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         scaledIcon.paintIcon(null, g, 0, 0);
         g.dispose();
         return img;
@@ -510,10 +546,11 @@ public class AiDock extends JPanel {
     }
 
     private Image resize(BufferedImage img) {
-        var resized = new BufferedImage(AiDock.ICON_SIZE, AiDock.ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
+        var resized = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
         var g = resized.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        g.drawImage(img, 0, 0, AiDock.ICON_SIZE, AiDock.ICON_SIZE, null);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.drawImage(img, 0, 0, ICON_SIZE, ICON_SIZE, null);
         g.dispose();
         return resized;
     }
