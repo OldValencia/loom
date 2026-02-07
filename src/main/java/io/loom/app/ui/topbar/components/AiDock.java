@@ -55,8 +55,7 @@ public class AiDock extends JPanel {
         this.cefWebView = cefWebView;
         this.appPreferences = appPreferences;
 
-        var userHome = System.getProperty("user.home");
-        var userIconsDir = new File(userHome, ".loom/icons");
+        var userIconsDir = new File(AppPreferences.DATA_DIR, "icons");
 
         setOpaque(false);
         setLayout(new BorderLayout());

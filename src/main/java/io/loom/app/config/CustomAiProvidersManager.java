@@ -26,21 +26,15 @@ public class CustomAiProvidersManager {
     private final File iconsDir;
 
     public CustomAiProvidersManager() {
-        File configDir = resolveConfigDirectory();
-        this.configFile = new File(configDir, "providers.json");
-        this.iconsDir = new File(configDir, "icons");
+        this.configFile = new File(AppPreferences.DATA_DIR, "providers.json");
+        this.iconsDir = new File(AppPreferences.DATA_DIR, "icons");
 
-        if (!configDir.exists() && !configDir.mkdirs()) {
-            log.error("Failed to create config directory: {}", configDir);
+        if (!AppPreferences.DATA_DIR.exists() && !AppPreferences.DATA_DIR.mkdirs()) {
+            log.error("Failed to create config directory: {}", AppPreferences.DATA_DIR);
         }
         if (!iconsDir.exists() && !iconsDir.mkdirs()) {
             log.error("Failed to create icons directory: {}", iconsDir);
         }
-    }
-
-    private File resolveConfigDirectory() {
-        String userHome = System.getProperty("user.home");
-        return new File(userHome, ".loom");
     }
 
     public List<AiConfiguration.AiConfig> loadProviders() {

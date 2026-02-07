@@ -1,5 +1,6 @@
 package io.loom.app.utils;
 
+import io.loom.app.config.AppPreferences;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -38,8 +39,7 @@ public class AutoStartManager {
     }
 
     private static void handleMac(boolean enable, String path) throws Exception {
-        var userHome = System.getProperty("user.home");
-        var launchAgentsDir = new File(userHome, "Library/LaunchAgents");
+        var launchAgentsDir = new File(AppPreferences.DATA_DIR, "Library/LaunchAgents");
         if (!launchAgentsDir.exists()) {
             launchAgentsDir.mkdirs();
         }

@@ -4,7 +4,6 @@ import io.loom.app.config.AiConfiguration;
 import io.loom.app.config.AppPreferences;
 import io.loom.app.utils.LogSetup;
 import io.loom.app.utils.MemoryMonitor;
-import io.loom.app.utils.SystemUtils;
 import io.loom.app.windows.SettingsWindow;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -34,14 +33,12 @@ import java.awt.event.ComponentEvent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.function.Consumer;
 
 @Slf4j
 public class CefWebView extends JPanel {
 
-    private final File BASE_DIR_FILE = resolveDataDirectory();
-    private final String BASE_DIR = BASE_DIR_FILE.getAbsolutePath();
+    private final String BASE_DIR = AppPreferences.DATA_DIR.getAbsolutePath();
 
     private final String LOGS_DIR = LogSetup.LOGS_DIR;
     private final String INSTALL_DIR = new File(BASE_DIR, "jcef-bundle").getAbsolutePath();
@@ -94,20 +91,6 @@ public class CefWebView extends JPanel {
 
         smartClean();
         initCef(startUrl);
-    }
-
-    private File resolveDataDirectory() {
-        var userHome = System.getProperty("user.home");
-
-        File dataDir;
-        if (SystemUtils.isMac()) {
-            // macOS: ~/Library/Application Support/Loom
-            dataDir = Paths.get(userHome, "Library", "Application Support", "Loom").toFile();
-        } else {
-            // Windows/Linux: ~/.loom
-            dataDir = Paths.get(userHome, ".loom").toFile();
-        }
-        return dataDir;
     }
 
     public void setCurrentConfig(AiConfiguration.AiConfig currentConfig) {

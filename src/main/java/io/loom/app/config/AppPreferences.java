@@ -15,7 +15,8 @@ import java.util.List;
 @Slf4j
 public class AppPreferences {
 
-    private static final String DIR;
+    public static final String DIR;
+    public static final File DATA_DIR;
 
     static {
         boolean isDev = "Dev-Build".equals(SystemUtils.VERSION) || SystemUtils.VERSION == null;
@@ -26,7 +27,8 @@ public class AppPreferences {
             DIR = System.getProperty("user.home") + "/.loom";
         }
 
-        new File(DIR).mkdirs();
+        DATA_DIR = new File(DIR);
+        DATA_DIR.mkdirs();
     }
 
     private static final String FILE_NAME = "app-config.json";
