@@ -54,8 +54,6 @@ public class SettingsPanel extends JPanel {
         addDonationSection();
         add(Box.createVerticalStrut(20));
         addProvidersSection();
-        add(Box.createVerticalStrut(10));
-
         var resetRow = buildResetRow(aiConfiguration);
         add(resetRow);
         add(Box.createVerticalStrut(20));

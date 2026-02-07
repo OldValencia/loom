@@ -159,8 +159,8 @@ public class MainWindow {
     }
 
     private void toggleSettings() {
-        if (!frame.isVisible() && settingsWindow.isOpen()) {
-            settingsWindow.close();
+        if (settingsWindow.isOpen() && !settingsWindow.isVisible()) {
+            settingsWindow.open();
             return;
         }
 

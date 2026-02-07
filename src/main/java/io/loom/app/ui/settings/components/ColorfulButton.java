@@ -31,7 +31,8 @@ public class ColorfulButton extends JPanel {
 
         Font displayFont;
         if (SystemUtils.isMac()) {
-            displayFont = new Font(".AppleSystemUIFont", Font.PLAIN, 14);
+            var size = isIconMode ? 18 : 14;
+            displayFont = new Font(".AppleSystemUIFont", Font.PLAIN, size);
         } else if (SystemUtils.isWindows()) {
             displayFont = new Font("Segoe UI", Font.PLAIN, 13);
         } else {

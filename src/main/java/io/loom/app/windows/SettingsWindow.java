@@ -86,6 +86,10 @@ public class SettingsWindow {
         return window != null && window.isVisible() && targetProgress > 0.5f;
     }
 
+    public boolean isVisible() {
+        return window != null && window.isVisible();
+    }
+
     private void createWindow() {
         window = new JWindow(owner);
         window.setAlwaysOnTop(true);

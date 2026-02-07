@@ -3,6 +3,7 @@ package io.loom.app.config;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.loom.app.utils.AutoStartManager;
+import io.loom.app.utils.SystemUtils;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
@@ -14,8 +15,21 @@ import java.util.List;
 @Slf4j
 public class AppPreferences {
 
+    private static final String DIR;
+
+    static {
+        boolean isDev = "Dev-Build".equals(SystemUtils.VERSION) || SystemUtils.VERSION == null;
+
+        if (SystemUtils.isMac() && !isDev) {
+            DIR = System.getProperty("user.home") + "/Library/Application Support/Loom";
+        } else {
+            DIR = System.getProperty("user.home") + "/.loom";
+        }
+
+        new File(DIR).mkdirs();
+    }
+
     private static final String FILE_NAME = "app-config.json";
-    private static final String DIR = System.getProperty("user.home") + File.separator + ".loom";
     private static final File FILE = new File(DIR, FILE_NAME);
 
     private final ObjectMapper mapper = new ObjectMapper();
