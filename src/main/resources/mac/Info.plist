@@ -2,13 +2,34 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>CFBundleName</key>
+    <string>Loom</string>
+    <key>CFBundleDisplayName</key>
+    <string>Loom</string>
+    <key>CFBundleIdentifier</key>
+    <string>io.loom.app</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>Loom</string>
+
     <key>CFBundleIconFile</key>
     <string>Loom.icns</string>
+
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>Bluetooth access is required for security keys (Passkeys) authentication.</string>
+
+    <key>NSAccessibilityUsageDescription</key>
+    <string>The application needs accessibility permissions to handle global keyboard shortcuts.</string>
+    <key>NSInputMonitoringUsageDescription</key>
+    <string>The application needs input monitoring permissions to respond to global mouse and keyboard events.</string>
+
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>LSMinimumSystemVersion</key>
     <string>10.11</string>
+
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
+    <true/>
 </dict>
 </plist>
