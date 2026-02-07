@@ -130,7 +130,7 @@ public class SettingsPanel extends JPanel {
 
     private void buildHotkeySection() {
         addSectionHeader("Global Hotkey");
-        add(new HotkeySection(appPreferences.getHotkeyToStartApplication(), hotkeyManager));
+        add(new HotkeySection(appPreferences, hotkeyManager));
     }
 
     private void buildBrowserSection() {

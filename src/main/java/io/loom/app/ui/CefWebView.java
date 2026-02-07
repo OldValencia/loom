@@ -217,7 +217,7 @@ public class CefWebView extends JPanel {
                 if (onProgressUpdate != null) {
                     SwingUtilities.invokeLater(() -> onProgressUpdate.accept(statusText));
                 }
-                log.info("CEF Init Progress: {} - {}%", state, Math.round(percent * 100));
+                log.info("CEF Init Progress: {} - {}%", state, percent);
             });
 
             // Reduced renderer processes and memory limits

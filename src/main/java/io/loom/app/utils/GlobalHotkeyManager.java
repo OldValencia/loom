@@ -12,6 +12,7 @@ import lombok.Getter;
 
 import javax.swing.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -26,9 +27,9 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
     private final MainWindow mainWindow;
     private final AppPreferences appPreferences;
 
-    private final Set<Integer> pressedKeys = new HashSet<>();
+    private final Set<Integer> pressedKeys = Collections.synchronizedSet(new HashSet<>());
 
-    private boolean recording = false;
+    private volatile boolean recording = false;
     private Runnable onRecordComplete;
 
     private boolean hotkeyTriggered = false;
@@ -57,10 +58,6 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
 
     public void start() {
         try {
-            if (SystemUtils.isMac() && !checkAccessibilityPermissions()) {
-                return;
-            }
-
             GlobalScreen.registerNativeHook();
             GlobalScreen.addNativeKeyListener(this);
             GlobalScreen.addNativeMouseListener(this);
@@ -82,16 +79,6 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
             GlobalScreen.removeNativeMouseListener(this);
             GlobalScreen.unregisterNativeHook();
         } catch (NativeHookException ignored) {
-        }
-    }
-
-    private boolean checkAccessibilityPermissions() {
-        try {
-            GlobalScreen.registerNativeHook();
-            GlobalScreen.unregisterNativeHook();
-            return true;
-        } catch (NativeHookException e) {
-            return false;
         }
     }
 
@@ -121,9 +108,11 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
         var saved = appPreferences.getHotkeyToStartApplication();
         if (saved == null || saved.isEmpty()) return;
 
-        if (pressedKeys.containsAll(saved)) {
-            hotkeyTriggered = true;
-            SwingUtilities.invokeLater(this::toggleWindow);
+        synchronized (pressedKeys) {
+            if (pressedKeys.containsAll(saved)) {
+                hotkeyTriggered = true;
+                SwingUtilities.invokeLater(this::toggleWindow);
+            }
         }
     }
 
@@ -194,9 +183,10 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
         int code = MOUSE_OFFSET + e.getButton();
 
         if (recording) {
-            boolean simpleClick =
-                    pressedKeys.size() == 1 && (pressedKeys.contains(MOUSE_OFFSET + 1)
-                                                || pressedKeys.contains(MOUSE_OFFSET + 2));
+            boolean simpleClick;
+            synchronized (pressedKeys) {
+                simpleClick = pressedKeys.size() == 1 && (pressedKeys.contains(MOUSE_OFFSET + 1) || pressedKeys.contains(MOUSE_OFFSET + 2));
+            }
 
             if (!pressedKeys.isEmpty() && !simpleClick) {
                 finishRecording(true, false);
@@ -213,11 +203,12 @@ public class GlobalHotkeyManager implements NativeKeyListener, NativeMouseInputL
         recording = false;
 
         if (save) {
-            if (forceClear || pressedKeys.isEmpty()) {
-                appPreferences.setHotkeyToStartApplication(null);
-            } else {
-                appPreferences.setHotkeyToStartApplication(
-                        new ArrayList<>(pressedKeys));
+            synchronized (pressedKeys) {
+                if (forceClear || pressedKeys.isEmpty()) {
+                    appPreferences.setHotkeyToStartApplication(null);
+                } else {
+                    appPreferences.setHotkeyToStartApplication(new ArrayList<>(pressedKeys));
+                }
             }
         }
 

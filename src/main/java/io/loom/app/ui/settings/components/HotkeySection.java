@@ -1,16 +1,17 @@
 package io.loom.app.ui.settings.components;
 
+import io.loom.app.config.AppPreferences;
 import io.loom.app.ui.Theme;
 import io.loom.app.utils.GlobalHotkeyManager;
 import io.loom.app.utils.SystemUtils;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class HotkeySection extends JPanel {
-    public HotkeySection(List<Integer> hotkeyToStartApplication, GlobalHotkeyManager hotkeyManager) {
+
+    public HotkeySection(AppPreferences appPreferences, GlobalHotkeyManager hotkeyManager) {
         super();
         this.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
         this.setOpaque(false);
@@ -27,7 +28,7 @@ public class HotkeySection extends JPanel {
         mainRow.add(Box.createHorizontalGlue());
 
         if (hotkeyManager != null && hotkeyManager.isInitialized()) {
-            var hotkeyRecordButton = buildHotkeyRecordButton(hotkeyToStartApplication, hotkeyManager);
+            var hotkeyRecordButton = buildHotkeyRecordButton(appPreferences, hotkeyManager);
             mainRow.add(hotkeyRecordButton);
             mainRow.add(Box.createHorizontalStrut(8));
             mainRow.add(buildResetHotkeyButton(hotkeyManager, hotkeyRecordButton));
@@ -56,7 +57,7 @@ public class HotkeySection extends JPanel {
         warningPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         warningPanel.setMaximumSize(new Dimension(Short.MAX_VALUE, 30));
 
-        var warningLabel = new JLabel("<html><i>⚠️ Accessibility permissions required in System Settings</i></html>");
+        var warningLabel = new JLabel("<html><i>Give Accessibility permissions in System Settings and restart app</i></html>");
         warningLabel.setFont(Theme.FONT_SETTINGS.deriveFont(11f));
         warningLabel.setForeground(new Color(255, 180, 0));
         warningPanel.add(warningLabel);
@@ -64,8 +65,8 @@ public class HotkeySection extends JPanel {
         return warningPanel;
     }
 
-    private AnimatedSettingsButton buildHotkeyRecordButton(List<Integer> hotkeyToStartApplication, GlobalHotkeyManager hotkeyManager) {
-        var currentHotkey = GlobalHotkeyManager.getHotkeyText(hotkeyToStartApplication);
+    private AnimatedSettingsButton buildHotkeyRecordButton(AppPreferences appPreferences, GlobalHotkeyManager hotkeyManager) {
+        var currentHotkey = GlobalHotkeyManager.getHotkeyText(appPreferences.getHotkeyToStartApplication());
         var initialText = currentHotkey.isEmpty() ? "Click to Record" : currentHotkey;
         var btnRef = new AtomicReference<AnimatedSettingsButton>();
 
@@ -74,7 +75,7 @@ public class HotkeySection extends JPanel {
             if (button != null) {
                 button.setText("Press keys... (Esc to cancel)");
                 hotkeyManager.startRecording(() -> {
-                    var newHotkey = GlobalHotkeyManager.getHotkeyText(hotkeyToStartApplication);
+                    var newHotkey = GlobalHotkeyManager.getHotkeyText(appPreferences.getHotkeyToStartApplication());
                     button.setText(newHotkey);
                 });
             }
