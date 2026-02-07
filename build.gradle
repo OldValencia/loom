@@ -20,29 +20,41 @@ def junitVersion = '5.10.2'
 def lombokVersion = '1.18.42'
 def flatLafVersion = '3.7'
 def javaOpts = [
-        '-Xms64m',
-        '-Xmx512m',
-        '-Xss2m',
+        '-Xms32m',
+        '-Xmx384m',
+        '-Xss1m',
 
-        '-XX:MaxMetaspaceSize=128m',
-        '-XX:MetaspaceSize=32m',
-        '-XX:CompressedClassSpaceSize=16m',
+        // Metaspace settings
+        '-XX:MaxMetaspaceSize=96m',
+        '-XX:MetaspaceSize=24m',
+        '-XX:CompressedClassSpaceSize=12m',
 
         '-XX:+UseG1GC',
-        '-XX:MinHeapFreeRatio=10',
-        '-XX:MaxHeapFreeRatio=40',
+        '-XX:MinHeapFreeRatio=5',
+        '-XX:MaxHeapFreeRatio=25',
         '-XX:GCTimeRatio=19',
+        '-XX:G1HeapRegionSize=1m',
+        '-XX:InitiatingHeapOccupancyPercent=35',
 
+        // String optimization
         '-XX:+UseStringDeduplication',
         '-XX:StringTableSize=60013',
-        '-XX:+TieredCompilation',
 
-        // experimental
+        // Compilation settings
+        '-XX:+TieredCompilation',
+        '-XX:TieredStopAtLevel=1',
+
+        // Experimental optimizations
         '-XX:+OptimizeStringConcat',
         '-XX:+UseCompressedOops',
+        '-XX:+UseCompressedClassPointers',
 
+        // Graphics settings
         '-Dsun.java2d.noddraw=true',
+        '-Dsun.java2d.d3d=false',
+        '-Dsun.java2d.opengl=false',
 
+        // Module access
         '--add-exports=java.base/java.lang=ALL-UNNAMED',
         '--add-exports=java.desktop/sun.awt=ALL-UNNAMED',
         '--add-exports=java.desktop/sun.java2d=ALL-UNNAMED',

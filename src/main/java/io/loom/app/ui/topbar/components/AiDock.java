@@ -88,6 +88,7 @@ public class AiDock extends JPanel {
 
         int timerDelay = SystemUtils.isMac() ? 16 : 10;
         animationTimer = new Timer(timerDelay, e -> animate());
+        animationTimer.setCoalesce(true);
 
         setupMouseListeners();
 
@@ -103,6 +104,16 @@ public class AiDock extends JPanel {
                 cefWebView.setCurrentConfig(dockItems.get(selectedIndex).config);
             }
         });
+    }
+
+    public static void clearIconCache() {
+        ICON_CACHE.clear();
+        log.info("Icon cache cleared");
+    }
+
+    public static void pruneIconCache(List<String> activeIcons) {
+        ICON_CACHE.keySet().retainAll(activeIcons);
+        log.info("Icon cache pruned, {} icons remaining", ICON_CACHE.size());
     }
 
     private void setupMouseListeners() {
@@ -359,7 +370,7 @@ public class AiDock extends JPanel {
     }
 
     private int getTextWidth(String text) {
-        return new Canvas().getFontMetrics(Theme.FONT_SELECTOR).stringWidth(text);
+        return getFontMetrics(Theme.FONT_SELECTOR).stringWidth(text);
     }
 
     @Getter

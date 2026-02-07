@@ -6,6 +6,7 @@ import io.loom.app.ui.CefWebView;
 import io.loom.app.ui.Theme;
 import io.loom.app.ui.settings.SettingsPanel;
 import io.loom.app.ui.topbar.TopBarArea;
+import io.loom.app.ui.topbar.components.AiDock;
 import io.loom.app.utils.GlobalHotkeyManager;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.RoundRectangle2D;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -80,7 +82,15 @@ public class MainWindow {
     }
 
     private void handleProvidersChanged() {
-        SwingUtilities.invokeLater(this::reloadTopBar);
+        SwingUtilities.invokeLater(() -> {
+            var activeIcons = aiConfiguration.getConfigurations().stream()
+                    .map(AiConfiguration.AiConfig::icon)
+                    .filter(icon -> icon != null && !icon.isEmpty())
+                    .collect(Collectors.toList());
+            AiDock.pruneIconCache(activeIcons);
+
+            reloadTopBar();
+        });
     }
 
     public void reloadTopBar() {
@@ -200,6 +210,8 @@ public class MainWindow {
         if (frame != null) {
             frame.setVisible(false);
         }
+
+        AiDock.clearIconCache();
 
         if (cefWebView != null) {
             cefWebView.shutdown(() -> {
