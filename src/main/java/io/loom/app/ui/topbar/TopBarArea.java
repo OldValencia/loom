@@ -5,48 +5,36 @@ import io.loom.app.config.AppPreferences;
 import io.loom.app.ui.CefWebView;
 import io.loom.app.ui.topbar.components.GradientPanel;
 import io.loom.app.windows.SettingsWindow;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
-@RequiredArgsConstructor
-public class TopBarArea {
+public class TopBarArea extends GradientPanel {
 
-    private final AiConfiguration aiConfiguration;
-    private final CefWebView cefWebView;
     private final JFrame frame;
     private final SettingsWindow settingsWindow;
-    private final AppPreferences appPreferences;
-    private final Runnable onSettingsToggle;
-    private final Runnable onCloseWindow;
 
     private Point initialClick;
 
-    @Getter
-    private GradientPanel topBarPanel;
+    public TopBarArea(AiConfiguration aiConfiguration, CefWebView cefWebView, JFrame frame, SettingsWindow settingsWindow, AppPreferences appPreferences, Runnable onSettingsToggle, Runnable onCloseWindow) {
+        super();
 
-    public JPanel createTopBar() {
-        topBarPanel = new GradientPanel();
-        topBarPanel.setPreferredSize(new Dimension(frame.getWidth(), 48));
-        topBarPanel.setLayout(new BorderLayout());
+        this.frame = frame;
+        this.settingsWindow = settingsWindow;
 
-        var leftTopBarArea = new LeftTopBarArea(aiConfiguration, cefWebView, appPreferences);
-        topBarPanel.add(leftTopBarArea.buildLeftArea(), BorderLayout.WEST);
+        this.setPreferredSize(new Dimension(frame.getWidth(), 48));
+        this.setLayout(new BorderLayout());
 
-        var rightTopBarArea = new RightTopBarArea(cefWebView, onSettingsToggle, onCloseWindow);
-        topBarPanel.add(rightTopBarArea.buildRightArea(), BorderLayout.EAST);
+        this.add(new LeftTopBarArea(aiConfiguration, cefWebView, appPreferences), BorderLayout.WEST);
+        this.add(new RightTopBarArea(cefWebView, onSettingsToggle, onCloseWindow), BorderLayout.EAST);
 
-        setupDragging(topBarPanel);
+        setupDragging(this);
 
         if (!aiConfiguration.getConfigurations().isEmpty()) {
-            topBarPanel.updateAccentColor(Color.decode(aiConfiguration.getConfigurations().getFirst().color()));
+            this.updateAccentColor(Color.decode(aiConfiguration.getConfigurations().getFirst().color()));
         }
-
-        return topBarPanel;
     }
 
     private void setupDragging(JPanel panel) {

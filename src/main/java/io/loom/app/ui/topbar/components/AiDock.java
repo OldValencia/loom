@@ -1,48 +1,47 @@
 package io.loom.app.ui.topbar.components;
 
-import com.formdev.flatlaf.extras.FlatSVGIcon;
 import io.loom.app.config.AiConfiguration;
 import io.loom.app.config.AppPreferences;
 import io.loom.app.ui.CefWebView;
 import io.loom.app.ui.Theme;
+import io.loom.app.ui.topbar.utils.AiDockIconUtils;
+import io.loom.app.ui.topbar.utils.AiDockOrderUtils;
+import io.loom.app.utils.SystemUtils;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.geom.RoundRectangle2D;
-import java.awt.image.BufferedImage;
 import java.io.File;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class AiDock extends JPanel {
 
-    private static final int ICON_SIZE = 24;
-    private static final int ITEM_HEIGHT = 32;
-    private static final int PAD = 12;
-    private static final int GAP = 8;
-    private static final int ITEM_MARGIN = 6;
+    public static final Map<String, Image> ICON_CACHE = new ConcurrentHashMap<>();
+    public static final int ICON_SIZE = 24;
+
+    static final int ITEM_HEIGHT = 32;
+    static final int ITEM_MARGIN = 6;
+    static final int PAD = 12;
+    static final int GAP = 8;
+
     private static final int DRAG_THRESHOLD = 10;
     private static final int MAX_DOCK_WIDTH = 500;
-    private static final Map<String, Image> ICON_CACHE = new ConcurrentHashMap<>();
 
     private final List<DockItem> dockItems = new ArrayList<>();
     private final CefWebView cefWebView;
     private final AppPreferences appPreferences;
     private final Timer animationTimer;
 
-    private final File userIconsDir;
     private final JPanel dockContainer;
 
     private int selectedIndex = 0;
@@ -56,45 +55,16 @@ public class AiDock extends JPanel {
         this.cefWebView = cefWebView;
         this.appPreferences = appPreferences;
 
-        String userHome = System.getProperty("user.home");
-        this.userIconsDir = new File(userHome, ".loom/icons");
+        var userHome = System.getProperty("user.home");
+        var userIconsDir = new File(userHome, ".loom/icons");
 
         setOpaque(false);
         setLayout(new BorderLayout());
 
-        dockContainer = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g0) {
-                var g = (Graphics2D) g0;
-                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-                g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        dockContainer = new AiDockContainer(dockItems);
+        add(new AiDockScrollPane(dockContainer), BorderLayout.CENTER);
 
-                int y = (getHeight() - ITEM_HEIGHT) / 2;
-                float currentX = 0;
-
-                for (var item : dockItems) {
-                    if (item.currentWidth > 1.0f) {
-                        drawDockItem(g, item, (int) currentX, y);
-                        currentX += item.currentWidth + ITEM_MARGIN;
-                    }
-                }
-            }
-        };
-        dockContainer.setOpaque(false);
-        dockContainer.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-        var scrollPane = new JScrollPane(dockContainer);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-        scrollPane.setBorder(null);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
-        scrollPane.getHorizontalScrollBar().setPreferredSize(new Dimension(0, 3));
-        scrollPane.getHorizontalScrollBar().setUnitIncrement(16);
-        add(scrollPane, BorderLayout.CENTER);
-
-        var orderedConfigs = applyCustomOrder(configs);
+        var orderedConfigs = AiDockOrderUtils.applyCustomOrder(configs, appPreferences);
         var lastUrl = appPreferences.getLastUrl();
         var initialIndex = 0;
         if (lastUrl != null) {
@@ -113,10 +83,10 @@ public class AiDock extends JPanel {
                 item.setSelected(true);
             }
             dockItems.add(item);
-            preloadIcon(orderedConfigs.get(i));
+            AiDockIconUtils.preloadIcon(orderedConfigs.get(i), userIconsDir);
         }
 
-        int timerDelay = System.getProperty("os.name", "").toLowerCase().contains("mac") ? 16 : 10;
+        int timerDelay = SystemUtils.isMac() ? 16 : 10;
         animationTimer = new Timer(timerDelay, e -> animate());
 
         setupMouseListeners();
@@ -135,38 +105,6 @@ public class AiDock extends JPanel {
         });
     }
 
-    private List<AiConfiguration.AiConfig> applyCustomOrder(List<AiConfiguration.AiConfig> configs) {
-        var savedOrder = appPreferences.getAiOrder();
-        if (savedOrder.isEmpty()) {
-            return configs;
-        }
-
-        var ordered = new ArrayList<AiConfiguration.AiConfig>();
-        for (var url : savedOrder) {
-            if (url.startsWith("http")) {
-                configs.stream()
-                        .filter(c -> c.url().equals(url))
-                        .findFirst()
-                        .ifPresent(ordered::add);
-            }
-        }
-
-        for (var config : configs) {
-            if (!ordered.contains(config)) {
-                ordered.add(config);
-            }
-        }
-
-        return ordered;
-    }
-
-    private void saveCurrentOrder() {
-        var urls = dockItems.stream()
-                .map(item -> item.config.url())
-                .collect(Collectors.toList());
-        appPreferences.setAiOrder(urls);
-    }
-
     private void setupMouseListeners() {
         var mouseAdapter = new MouseAdapter() {
             @Override
@@ -181,7 +119,6 @@ public class AiDock extends JPanel {
             public void mouseExited(MouseEvent e) {
                 isMouseInside = false;
                 if (!isDragging) {
-                    // Проверяем, действительно ли мышь покинула область
                     Point mousePos = e.getPoint();
                     if (!dockContainer.contains(mousePos)) {
                         for (var item : dockItems) {
@@ -233,7 +170,7 @@ public class AiDock extends JPanel {
                 if (isDragging) {
                     isDragging = false;
                     dragStartIndex = -1;
-                    saveCurrentOrder();
+                    AiDockOrderUtils.saveCurrentOrder(dockItems, appPreferences);
                     if (!animationTimer.isRunning()) {
                         animationTimer.start();
                     }
@@ -325,7 +262,7 @@ public class AiDock extends JPanel {
         for (var item : dockItems) {
             var diff = item.targetWidth - item.currentWidth;
             if (Math.abs(diff) > 0.5f) {
-                item.currentWidth += diff * 0.25f; // Немного медленнее для плавности
+                item.currentWidth += diff * 0.25f;
                 needsRepaint = true;
             } else {
                 item.currentWidth = item.targetWidth;
@@ -336,8 +273,7 @@ public class AiDock extends JPanel {
             revalidateWidth();
             dockContainer.repaint();
 
-            // Для macOS - принудительная синхронизация
-            if (System.getProperty("os.name", "").toLowerCase().contains("mac")) {
+            if (SystemUtils.isMac()) {
                 Toolkit.getDefaultToolkit().sync();
             }
         } else if (!isDockHovered && !isMouseInside) {
@@ -354,7 +290,6 @@ public class AiDock extends JPanel {
             }
         }
 
-        // Ограничиваем максимальную ширину
         int finalWidth = Math.min(totalW, MAX_DOCK_WIDTH);
         dockContainer.setPreferredSize(new Dimension(totalW, 48));
         setPreferredSize(new Dimension(finalWidth, 48));
@@ -423,149 +358,22 @@ public class AiDock extends JPanel {
         }
     }
 
-    private void drawDockItem(Graphics2D g, DockItem item, int x, int y) {
-        var w = (int) item.currentWidth;
-        if (w <= 0) {
-            return;
-        }
-
-        var shape = new RoundRectangle2D.Float(x, y, w, ITEM_HEIGHT, ITEM_HEIGHT, ITEM_HEIGHT);
-
-        if (item.isSelected()) {
-            var bg = Theme.ACCENT;
-            try {
-                if (item.config.color() != null) {
-                    bg = Color.decode(item.config.color());
-                }
-            } catch (Exception e) {
-                log.warn("Warning while trying to draw dock item ({})", item.config.name(), e);
-            }
-            g.setColor(bg);
-            g.fill(shape);
-        } else {
-            g.setColor(item.isHovered() ? Theme.BG_HOVER : Theme.BG_POPUP);
-            g.fill(shape);
-            g.setColor(Theme.BORDER);
-            g.setStroke(new BasicStroke(1f));
-            g.draw(shape);
-        }
-
-        Image icon = null;
-        if (item.config.icon() != null) {
-            icon = ICON_CACHE.get(item.config.icon());
-        }
-
-        if (icon != null) {
-            var iconY = y + (ITEM_HEIGHT - ICON_SIZE) / 2;
-            g.drawImage(icon, x + PAD, iconY, ICON_SIZE, ICON_SIZE, null);
-        }
-
-        if (w > PAD + ICON_SIZE + PAD) {
-            g.setFont(Theme.FONT_SELECTOR);
-            g.setColor(Theme.TEXT_PRIMARY);
-            var fm = g.getFontMetrics();
-            var textX = x + PAD + ICON_SIZE + GAP;
-            var textY = y + (ITEM_HEIGHT + fm.getAscent() - fm.getDescent()) / 2;
-            var oldClip = g.getClip();
-            g.setClip(shape);
-            g.drawString(item.config.name(), textX, textY);
-            g.setClip(oldClip);
-        }
-    }
-
     private int getTextWidth(String text) {
         return new Canvas().getFontMetrics(Theme.FONT_SELECTOR).stringWidth(text);
     }
 
-    private void preloadIcon(AiConfiguration.AiConfig cfg) {
-        if (cfg.icon() == null) {
-            return;
-        }
-
-        ICON_CACHE.computeIfAbsent(cfg.icon(), key -> {
-            try {
-                URL resourceUrl = AiDock.class.getResource("/icons/" + key);
-                if (resourceUrl != null) {
-                    if (key.toLowerCase().endsWith(".svg")) {
-                        var icon = new FlatSVGIcon(resourceUrl);
-                        return renderSvg(icon);
-                    } else {
-                        return resize(ImageIO.read(resourceUrl));
-                    }
-                }
-
-                File userIconFile = new File(userIconsDir, key);
-                if (userIconFile.exists()) {
-                    if (key.toLowerCase().endsWith(".svg")) {
-                        var icon = new FlatSVGIcon(userIconFile);
-                        return renderSvg(icon);
-                    } else {
-                        return resize(ImageIO.read(userIconFile));
-                    }
-                }
-
-                log.warn("Icon not found: {} (searched in resources and {})", key, userIconsDir.getAbsolutePath());
-                return createPlaceholderIcon();
-
-            } catch (Exception e) {
-                log.error("Error while trying to preload icon for {}", cfg.name(), e);
-                return createPlaceholderIcon();
-            }
-        });
-    }
-
-    private Image renderSvg(FlatSVGIcon icon) {
-        var scaledIcon = icon.derive(ICON_SIZE, ICON_SIZE);
-        var img = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
-        var g = img.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        scaledIcon.paintIcon(null, g, 0, 0);
-        g.dispose();
-        return img;
-    }
-
-    private Image createPlaceholderIcon() {
-        var img = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
-        var g = img.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-        g.setColor(new Color(100, 100, 100));
-        g.fillOval(2, 2, ICON_SIZE - 4, ICON_SIZE - 4);
-
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 16));
-        var fm = g.getFontMetrics();
-        var text = "?";
-        var x = (ICON_SIZE - fm.stringWidth(text)) / 2;
-        var y = (ICON_SIZE + fm.getAscent() - fm.getDescent()) / 2;
-        g.drawString(text, x, y);
-
-        g.dispose();
-        return img;
-    }
-
-    private Image resize(BufferedImage img) {
-        var resized = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
-        var g = resized.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        g.drawImage(img, 0, 0, ICON_SIZE, ICON_SIZE, null);
-        g.dispose();
-        return resized;
-    }
-
     @Getter
     @Setter
-    private static class DockItem {
+    public static class DockItem {
         private final AiConfiguration.AiConfig config;
-        private final int originalIndex;
+        @Getter(AccessLevel.PACKAGE)
         private float currentWidth = 0f;
+        private final int originalIndex;
         private float targetWidth = 0f;
         private boolean isSelected = false;
         private boolean isHovered = false;
 
-        public DockItem(AiConfiguration.AiConfig config, int index) {
+        private DockItem(AiConfiguration.AiConfig config, int index) {
             this.config = config;
             this.originalIndex = index;
         }

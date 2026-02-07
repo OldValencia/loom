@@ -3,7 +3,7 @@ package io.loom.app.utils;
 import lombok.extern.slf4j.Slf4j;
 import org.cef.browser.CefBrowser;
 
-import javax.swing.Timer;
+import javax.swing.*;
 import java.io.File;
 
 import static io.loom.app.utils.LogSetup.LOGS_DIR;
@@ -11,7 +11,7 @@ import static io.loom.app.utils.LogSetup.LOGS_DIR;
 @Slf4j
 public class MemoryMonitor {
 
-    private static final long HIGH_MEMORY_THRESHOLD = 400 * 1024 * 1024; // 400 MB
+    private static final long HIGH_MEMORY_THRESHOLD = 500 * 1024 * 1024; // 500 MB
     private static final int CHECK_INTERVAL = 60000;
 
     private final CefBrowser browser;
@@ -73,20 +73,5 @@ public class MemoryMonitor {
     private void clearApplicationTrash() {
         var logsDir = new File(LOGS_DIR);
         LogSetup.rotateCefLog(logsDir);
-    }
-
-    public void logMemoryStats() {
-        var runtime = Runtime.getRuntime();
-        var total = runtime.totalMemory() / 1024 / 1024;
-        var free = runtime.freeMemory() / 1024 / 1024;
-        var used = total - free;
-        var max = runtime.maxMemory() / 1024 / 1024;
-
-        log.info("=== Memory Statistics ===");
-        log.info("Used:  {} MB", used);
-        log.info("Free:  {} MB", free);
-        log.info("Total: {} MB", total);
-        log.info("Max:   {} MB", max);
-        log.info("========================");
     }
 }

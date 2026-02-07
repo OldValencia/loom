@@ -4,6 +4,7 @@ import io.loom.app.config.AiConfiguration;
 import io.loom.app.config.AppPreferences;
 import io.loom.app.utils.LogSetup;
 import io.loom.app.utils.MemoryMonitor;
+import io.loom.app.utils.SystemUtils;
 import io.loom.app.windows.SettingsWindow;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -97,10 +98,9 @@ public class CefWebView extends JPanel {
 
     private File resolveDataDirectory() {
         var userHome = System.getProperty("user.home");
-        var os = System.getProperty("os.name", "").toLowerCase();
 
         File dataDir;
-        if (os.contains("mac")) {
+        if (SystemUtils.isMac()) {
             // macOS: ~/Library/Application Support/Loom
             dataDir = Paths.get(userHome, "Library", "Application Support", "Loom").toFile();
         } else {
@@ -180,7 +180,7 @@ public class CefWebView extends JPanel {
                 for (var f : files) {
                     var name = f.getName();
                     if (name.equals("Cache") || name.equals("Code Cache") ||
-                            name.equals("GPUCache") || name.equals("ScriptCache")) {
+                        name.equals("GPUCache") || name.equals("ScriptCache")) {
                         deleteDirectory(f);
                     }
                 }
@@ -216,7 +216,6 @@ public class CefWebView extends JPanel {
 
             memoryMonitor = new MemoryMonitor(browser);
             memoryMonitor.start();
-            memoryMonitor.logMemoryStats();
 
             builder.addJcefArgs("--renderer-process-limit=1");
             builder.addJcefArgs("--process-per-site");
@@ -244,6 +243,7 @@ public class CefWebView extends JPanel {
             builder.addJcefArgs("--disable-skia-runtime-opts");
             builder.addJcefArgs("--disable-lcd-text");
             builder.addJcefArgs("--disable-image-animation-resync");
+
             if (appPreferences.isDarkModeEnabled()) {
                 builder.addJcefArgs("--force-dark-mode");
                 builder.addJcefArgs("--enable-features=WebUIDarkMode");

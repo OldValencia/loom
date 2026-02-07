@@ -4,21 +4,14 @@ import io.loom.app.ui.CefWebView;
 import io.loom.app.ui.Theme;
 import io.loom.app.ui.topbar.components.AnimatedIconButton;
 import io.loom.app.ui.topbar.components.ZoomButton;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 
 import javax.swing.*;
 import java.awt.*;
 
-@RequiredArgsConstructor
-class RightTopBarArea {
+class RightTopBarArea extends Box {
 
-    private final CefWebView cefWebView;
-    private final Runnable onSettingsToggle;
-    private final Runnable onCloseWindow;
-
-    Box buildRightArea() {
-        var box = Box.createHorizontalBox();
+    public RightTopBarArea(CefWebView cefWebView, Runnable onSettingsToggle, Runnable onCloseWindow) {
+        super(BoxLayout.X_AXIS);
 
         var wrapper = new JPanel(new GridBagLayout());
         wrapper.setOpaque(false);
@@ -41,8 +34,7 @@ class RightTopBarArea {
         gbc.insets = new Insets(0, 0, 0, 0);
         wrapper.add(new AnimatedIconButton("✕", Theme.BTN_HOVER_CLOSE, onCloseWindow), gbc);
 
-        box.add(wrapper);
-        box.add(Box.createHorizontalStrut(10));
-        return box;
+        this.add(wrapper);
+        this.add(Box.createHorizontalStrut(10));
     }
 }

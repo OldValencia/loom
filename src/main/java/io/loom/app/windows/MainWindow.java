@@ -69,7 +69,7 @@ public class MainWindow {
         cefWebView.setSettingsWindow(settingsWindow);
 
         var topBarArea = new TopBarArea(aiConfiguration, cefWebView, frame, settingsWindow, appPreferences, this::toggleSettings, this::closeWindow);
-        rootPanel.add(topBarArea.createTopBar(), BorderLayout.NORTH);
+        rootPanel.add(topBarArea, BorderLayout.NORTH);
 
         if (SystemTray.isSupported()) {
             setupTray();
@@ -112,7 +112,7 @@ public class MainWindow {
                     this::closeWindow
             );
 
-            rootPanel.add(newTopBarArea.createTopBar(), BorderLayout.NORTH);
+            rootPanel.add(newTopBarArea, BorderLayout.NORTH);
 
             rootPanel.revalidate();
             rootPanel.repaint();
