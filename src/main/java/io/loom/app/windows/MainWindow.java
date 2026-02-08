@@ -70,16 +70,12 @@ public class MainWindow extends JFrame {
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                if (settingsWindow != null && settingsWindow.isOpen()) {
-                    settingsWindow.close();
-                }
+                settingsWindow.close();
             }
 
             @Override
             public void windowIconified(WindowEvent e) {
-                if (settingsWindow != null && settingsWindow.isOpen()) {
-                    settingsWindow.close();
-                }
+                settingsWindow.close();
             }
 
             @Override
@@ -91,9 +87,14 @@ public class MainWindow extends JFrame {
         this.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentHidden(ComponentEvent e) {
-                if (settingsWindow != null && settingsWindow.isOpen()) {
-                    settingsWindow.close();
-                }
+                settingsWindow.close();
+            }
+        });
+
+        this.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentMoved(ComponentEvent e) {
+                settingsWindow.close();
             }
         });
     }
