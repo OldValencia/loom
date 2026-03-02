@@ -246,6 +246,10 @@ public class MainWindow extends Stage {
             fxWebViewPane = getFxWebViewPane();
             rootPane.setCenter(fxWebViewPane);
 
+            if (appPreferences.isStartApplicationHiddenEnabled()) {
+                fxWebViewPane.onWindowHidden();
+            }
+
             try {
                 globalHotkeyManager = new GlobalHotkeyManager(this, settingsWindow, appPreferences);
                 globalHotkeyManager.start();
@@ -272,8 +276,12 @@ public class MainWindow extends Stage {
                 @Override
                 public void run() {
                     Platform.runLater(() -> {
-                        if (splashScreen != null) splashScreen.hideSplash();
-                        if (!appPreferences.isStartApplicationHiddenEnabled()) show();
+                        if (splashScreen != null) {
+                            splashScreen.hideSplash();
+                        }
+                        if (!appPreferences.isStartApplicationHiddenEnabled()) {
+                            show();
+                        }
                     });
                 }
             }, 500);
