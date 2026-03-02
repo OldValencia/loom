@@ -262,15 +262,7 @@ public class FxWebViewPane extends StackPane {
         bridge.resetZoom();
     }
 
-    public void restart() {
-        var url = appPreferences.getLastUrl() != null ? appPreferences.getLastUrl() : startUrl;
-        bridge.navigate(url);
-    }
-
     public void shutdown(Runnable onComplete) {
-        bridge.shutdown(() -> Platform.runLater(() -> {
-            onComplete.run();
-            System.exit(0);
-        }));
+        bridge.shutdown(() -> Platform.runLater(onComplete));
     }
 }

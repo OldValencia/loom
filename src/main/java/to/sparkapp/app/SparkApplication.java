@@ -31,10 +31,10 @@ public class SparkApplication extends Application {
             return;
         }
 
+        Runtime.getRuntime().addShutdownHook(new Thread(SingleInstanceLock::release));
         Thread.setDefaultUncaughtExceptionHandler(new GlobalExceptionHandler());
         setupCookies();
         launch(args);
-        SingleInstanceLock.release();
     }
 
     @Override

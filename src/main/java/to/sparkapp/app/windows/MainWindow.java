@@ -35,6 +35,9 @@ public class MainWindow extends Stage {
     private GlobalHotkeyManager globalHotkeyManager;
     private SplashScreen splashScreen;
 
+    // Сохраняем иконку трея, чтобы можно было удалить её при выходе
+    private TrayIcon trayIcon;
+
     private boolean authMode = false;
 
     public static final int HEIGHT = 700;
@@ -178,7 +181,7 @@ public class MainWindow extends Stage {
         exitItem.addActionListener(e -> Platform.runLater(this::performShutdown));
         popup.add(exitItem);
 
-        var trayIcon = new TrayIcon(image, "Spark", popup);
+        trayIcon = new TrayIcon(image, "Spark", popup);
         trayIcon.setImageAutoSize(true);
         trayIcon.addActionListener(e -> Platform.runLater(this::showMainWindow));
 
@@ -204,6 +207,14 @@ public class MainWindow extends Stage {
     private void performShutdown() {
         log.info("Starting application shutdown...");
 
+        new Thread(() -> {
+            try {
+                Thread.sleep(1500);
+            } catch (InterruptedException ignored) {}
+            log.warn("Shutdown timeout reached. Forcing exit.");
+            System.exit(0);
+        }).start();
+
         if (globalHotkeyManager != null) {
             try {
                 globalHotkeyManager.stop();
@@ -220,12 +231,21 @@ public class MainWindow extends Stage {
         this.hide();
         AiDock.clearIconCache();
 
+        if (trayIcon != null && SystemTray.isSupported()) {
+            SystemTray.getSystemTray().remove(trayIcon);
+        }
+
         if (fxWebViewPane != null) {
-            fxWebViewPane.shutdown(() -> {
-                log.info("Webview shutdown complete");
-                Platform.exit();
+            try {
+                fxWebViewPane.shutdown(() -> {
+                    log.info("Webview shutdown complete");
+                    Platform.exit();
+                    System.exit(0);
+                });
+            } catch (Exception e) {
+                log.error("Error initiating Webview shutdown", e);
                 System.exit(0);
-            });
+            }
         } else {
             Platform.exit();
             System.exit(0);

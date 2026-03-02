@@ -103,11 +103,17 @@ public class WebviewManager {
                 webview = firstStart ? new Webview(false, parentHandle) : new Webview(false);
                 this.nativeHandle = webview.getNativeWindowPointer();
 
-                if (nativeHandle != 0 && !firstStart) {
-                    NativeWindowUtils.setVisible(nativeHandle, false);
-                    NativeWindowUtils.setBounds(nativeHandle, 15000, 15000, 10, 10);
-                    if (parentHandle != 0) {
-                        NativeWindowUtils.setParent(nativeHandle, parentHandle);
+                if (nativeHandle != 0) {
+                    if (isHibernated) {
+                        NativeWindowUtils.setVisible(nativeHandle, false);
+                        NativeWindowUtils.setBounds(nativeHandle, 15000, 15000, 10, 10);
+                        NativeWindowUtils.unparent(nativeHandle);
+                    } else if (!firstStart) {
+                        NativeWindowUtils.setVisible(nativeHandle, false);
+                        NativeWindowUtils.setBounds(nativeHandle, 15000, 15000, 10, 10);
+                        if (parentHandle != 0) {
+                            NativeWindowUtils.setParent(nativeHandle, parentHandle);
+                        }
                     }
                 }
 
@@ -122,10 +128,16 @@ public class WebviewManager {
                     zoomManager.applyZoomCss();
                     ready.set(true);
 
-                    if (nativeHandle != 0 && parentHandle != 0 && !isHibernated) {
-                        NativeWindowUtils.setParent(nativeHandle, parentHandle);
-                        NativeWindowUtils.setBounds(nativeHandle, nativeX, nativeY, nativeW, nativeH);
-                        NativeWindowUtils.setVisible(nativeHandle, true);
+                    if (nativeHandle != 0) {
+                        if (isHibernated) {
+                            NativeWindowUtils.setVisible(nativeHandle, false);
+                            NativeWindowUtils.setBounds(nativeHandle, 15000, 15000, 10, 10);
+                            NativeWindowUtils.unparent(nativeHandle);
+                        } else if (parentHandle != 0) {
+                            NativeWindowUtils.setParent(nativeHandle, parentHandle);
+                            NativeWindowUtils.setBounds(nativeHandle, nativeX, nativeY, nativeW, nativeH);
+                            NativeWindowUtils.setVisible(nativeHandle, true);
+                        }
                     }
 
                     if (onReadyCallback != null) {
@@ -254,7 +266,7 @@ public class WebviewManager {
     public void hibernate() {
         isHibernated = true;
 
-        if (!ready.get() || nativeHandle == 0 || !SystemUtils.isWindows()) {
+        if (!SystemUtils.isWindows() || nativeHandle == 0) {
             return;
         }
 
