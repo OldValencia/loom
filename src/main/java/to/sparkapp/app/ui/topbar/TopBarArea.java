@@ -3,11 +3,7 @@ package to.sparkapp.app.ui.topbar;
 import to.sparkapp.app.config.AiConfiguration;
 import to.sparkapp.app.config.AppPreferences;
 import to.sparkapp.app.ui.webview.FxWebViewPane;
-import to.sparkapp.app.ui.topbar.components.AiDock;
-import to.sparkapp.app.ui.topbar.components.AnimatedIconButton;
-import to.sparkapp.app.ui.topbar.components.DockItemNode;
-import to.sparkapp.app.ui.topbar.components.GradientPanel;
-import to.sparkapp.app.ui.topbar.components.ZoomButton;
+import to.sparkapp.app.ui.topbar.components.*;
 import to.sparkapp.app.windows.SettingsWindow;
 import javafx.scene.Node;
 import javafx.scene.control.ButtonBase;
@@ -20,8 +16,13 @@ public class TopBarArea extends GradientPanel {
     private final Stage frame;
     private final SettingsWindow settingsWindow;
 
-    private double initialX = Double.NaN;
-    private double initialY = Double.NaN;
+    private double xOffset = 0;
+    private double yOffset = 0;
+
+    private double startScreenX = 0;
+    private double startScreenY = 0;
+    private boolean isDragging = false;
+    private static final double DRAG_THRESHOLD = 5.0;
 
     public TopBarArea(AiConfiguration aiConfiguration,
                       FxWebViewPane fxWebViewPane,
@@ -49,12 +50,16 @@ public class TopBarArea extends GradientPanel {
     private void setupDragging() {
         this.setOnMousePressed(e -> {
             if (!isDraggableTarget((Node) e.getTarget())) {
-                initialX = Double.NaN;
-                initialY = Double.NaN;
+                isDragging = false;
                 return;
             }
-            initialX = e.getSceneX();
-            initialY = e.getSceneY();
+
+            xOffset = e.getSceneX();
+            yOffset = e.getSceneY();
+
+            startScreenX = e.getScreenX();
+            startScreenY = e.getScreenY();
+            isDragging = true;
 
             if (settingsWindow != null && settingsWindow.isOpen()) {
                 settingsWindow.close();
@@ -62,10 +67,18 @@ public class TopBarArea extends GradientPanel {
         });
 
         this.setOnMouseDragged(e -> {
-            if (Double.isNaN(initialX)) return;
-            frame.setX(e.getScreenX() - initialX);
-            frame.setY(e.getScreenY() - initialY);
+            if (!isDragging) return;
+
+            double deltaX = Math.abs(e.getScreenX() - startScreenX);
+            double deltaY = Math.abs(e.getScreenY() - startScreenY);
+
+            if (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD) {
+                frame.setX(e.getScreenX() - xOffset);
+                frame.setY(e.getScreenY() - yOffset);
+            }
         });
+
+        this.setOnMouseReleased(e -> isDragging = false);
     }
 
     private static boolean isDraggableTarget(Node node) {
