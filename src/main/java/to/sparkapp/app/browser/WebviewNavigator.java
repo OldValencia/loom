@@ -140,6 +140,20 @@ public class WebviewNavigator {
         return currentUrl != null ? currentUrl : "about:blank";
     }
 
+    void handleLinkClicked(String url) {
+        if (url == null || url.isBlank()) {
+            return;
+        }
+
+        if (isAuthUrl(url) || (configBaseUrl != null && isSameHost(url, configBaseUrl))) {
+            log.info("WebviewNavigator: Internal/Auth click detected, loading inside: {}", url);
+            navigate(url);
+        } else {
+            log.info("WebviewNavigator: External click detected, opening in OS browser: {}", url);
+            UrlUtils.openLink(url);
+        }
+    }
+
     private static boolean isSameHost(String url, String baseUrl) {
         try {
             var host1 = normalizeHost(URI.create(url).getHost());

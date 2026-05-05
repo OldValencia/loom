@@ -59,6 +59,23 @@ public class WebviewManager {
                     if (e.key === '0')                  { e.preventDefault(); window.sparkCall('zoom', 'reset'); }
                 });
             
+                document.addEventListener('click', function(e) {
+                    var a = e.target.closest('a');
+                    if (a && a.href && (a.href.startsWith('http://') || a.href.startsWith('https://'))) {
+                        try {
+                            var currentHost = window.location.hostname;
+                            var targetHost = new URL(a.href).hostname;
+
+                            if (currentHost !== targetHost || a.target === '_blank') {
+                                e.preventDefault();
+                                window.sparkCall('linkClicked', a.href);
+                            }
+                        } catch (err) {
+                            console.error('SparkLinkIntercept Error:', err);
+                        }
+                    }
+                });
+            
                 window.sparkCall('urlChanged', window.location.href);
                 var _push = history.pushState;
                 history.pushState = function() { _push.apply(this, arguments); window.sparkCall('urlChanged', window.location.href); };
@@ -177,6 +194,12 @@ public class WebviewManager {
         api.on("urlChanged", args -> {
             if (!args.isEmpty()) {
                 navigator.handleUrlChange(args.get(0).getAsString());
+            }
+        });
+
+        api.on("linkClicked", args -> {
+            if (!args.isEmpty()) {
+                navigator.handleLinkClicked(args.get(0).getAsString());
             }
         });
     }
@@ -325,10 +348,6 @@ public class WebviewManager {
 
     public void setCurrentConfig(AiConfiguration.AiConfig config) {
         navigator.setCurrentConfig(config);
-    }
-
-    public void navigate(String url) {
-        navigator.navigate(url);
     }
 
     public void clearCookies() {
