@@ -3,7 +3,7 @@ package to.sparkapp.app.ui.settings.components;
 import javafx.stage.Stage;
 import to.sparkapp.app.config.AiConfiguration;
 import to.sparkapp.app.config.CustomAiProvidersManager;
-import to.sparkapp.app.windows.FrameUtils;
+import to.sparkapp.app.utils.FrameUtils;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;

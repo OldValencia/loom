@@ -163,17 +163,14 @@ public class FxWebViewPane extends StackPane {
         if (!SystemUtils.isWindows() || !(window instanceof Stage stage)) {
             return 0L;
         }
-        var title = stage.getTitle();
-        boolean temporary = title == null || title.isEmpty();
-        if (temporary) {
-            title = "SparkMainWindow-" + System.nanoTime();
-            stage.setTitle(title);
-        }
-
-        long handle = NativeWindowUtils.getJavaFXWindowHandle(title);
-        if (temporary) {
-            stage.setTitle("");
-        }
+        
+        var originalTitle = stage.getTitle();
+        var uniqueTitle = "SparkWindow-" + java.util.UUID.randomUUID();
+        stage.setTitle(uniqueTitle);
+        
+        long handle = NativeWindowUtils.getJavaFXWindowHandle(uniqueTitle);
+        
+        stage.setTitle(originalTitle != null ? originalTitle : "");
         return handle;
     }
 

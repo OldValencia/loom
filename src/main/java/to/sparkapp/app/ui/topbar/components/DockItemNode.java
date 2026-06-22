@@ -32,6 +32,9 @@ public class DockItemNode extends HBox {
     private boolean isSelected = false;
     private boolean isDockHovered = false;
     private boolean isItemHovered = false;
+    @Getter
+    private boolean isDragging = false;
+    private double dragStartLocalX = 0;
 
     private final double expandedWidth;
     private final double iconWidth;
@@ -107,12 +110,52 @@ public class DockItemNode extends HBox {
             }
         });
 
-        this.setOnMouseClicked(e -> parentDock.selectItem(this));
+        this.setOnMousePressed(e -> {
+            parentDock.selectItem(this);
+            dragStartLocalX = parentDock.getDockContainer().sceneToLocal(e.getSceneX(), e.getSceneY()).getX();
+            isDragging = false;
+        });
 
         this.setOnMouseDragged(e -> {
             isItemHovered = true;
-            parentDock.handleDrag(this, e.getSceneX());
+            if (!isDragging) {
+                isDragging = true;
+                this.timeline.stop();
+                this.setPrefWidth(this.expandedWidth);
+                this.setMaxWidth(this.expandedWidth);
+                this.textLabel.setOpacity(1.0);
+                parentDock.getDragManager().onDragStart(this);
+            }
+            updateDragPosition(e.getSceneX());
+            parentDock.getDragManager().startAutoscrollIfNeeded(e.getSceneX());
         });
+
+        this.setOnMouseReleased(e -> {
+            parentDock.getDragManager().stopAutoscroll();
+            if (isDragging) {
+                isDragging = false;
+                parentDock.getDragManager().onDragEnd(this);
+                
+                Timeline oldAnim = (Timeline) this.getProperties().get("dragAnim");
+                if (oldAnim != null) oldAnim.stop();
+
+                Timeline anim = new Timeline(new KeyFrame(
+                    Duration.millis(150),
+                    new KeyValue(this.translateXProperty(), 0.0)
+                ));
+                this.getProperties().put("dragAnim", anim);
+                anim.setOnFinished(evt -> updateState());
+                anim.play();
+            }
+        });
+    }
+
+    public void updateDragPosition(double sceneX) {
+        double currentLocalX = parentDock.getDockContainer().sceneToLocal(sceneX, 0).getX();
+        double deltaX = currentLocalX - dragStartLocalX;
+        this.setTranslateX(deltaX);
+        double visualCenterX = this.getLayoutX() + deltaX + this.getLayoutBounds().getWidth() / 2.0;
+        parentDock.getDragManager().onDrag(visualCenterX);
     }
 
     public void setDockHovered(boolean dockHovered) {
@@ -144,6 +187,9 @@ public class DockItemNode extends HBox {
     }
 
     private void updateState() {
+        if (isDragging) {
+            return;
+        }
         timeline.stop();
         timeline.getKeyFrames().clear();
 
