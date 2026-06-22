@@ -76,6 +76,16 @@ public class WebviewManager {
                     }
                 });
             
+                document.addEventListener('auxclick', function(e) {
+                    if (e.button === 1) { // Middle mouse button
+                        var a = e.target.closest('a');
+                        if (a && a.href && (a.href.startsWith('http://') || a.href.startsWith('https://'))) {
+                            e.preventDefault();
+                            window.sparkCall('middleClicked', a.href);
+                        }
+                    }
+                });
+            
                 window.sparkCall('urlChanged', window.location.href);
                 var _push = history.pushState;
                 history.pushState = function() { _push.apply(this, arguments); window.sparkCall('urlChanged', window.location.href); };
@@ -200,6 +210,12 @@ public class WebviewManager {
         api.on("linkClicked", args -> {
             if (!args.isEmpty()) {
                 navigator.handleLinkClicked(args.get(0).getAsString());
+            }
+        });
+
+        api.on("middleClicked", args -> {
+            if (!args.isEmpty()) {
+                to.sparkapp.app.utils.UrlUtils.openLink(args.get(0).getAsString());
             }
         });
     }

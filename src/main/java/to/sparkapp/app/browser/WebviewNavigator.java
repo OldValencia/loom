@@ -23,22 +23,47 @@ public class WebviewNavigator {
     private volatile String configBaseUrl;
 
     private static final List<String> AUTH_DOMAINS = List.of(
+            // Google
             "accounts.google.",
             "consent.google.",
+            // OpenAI
             "auth.openai.",
+            // Apple
             "appleid.apple.com",
             "idmsa.apple.com",
+            // Microsoft
             "login.microsoftonline.com",
             "login.live.com",
             "login.windows.net",
             "account.microsoft.com",
+            // Facebook
             "login.facebook.com",
             "www.facebook.com/login",
+            // GitHub
             "github.com/login",
             "github.com/session",
             "github.com/oauth",
+            // Cloudflare
             "challenges.cloudflare.com",
-            "cloudflare.com/cdn-cgi/challenge"
+            "cloudflare.com/cdn-cgi/challenge",
+            // Anthropic / Claude
+            "auth.anthropic.com",
+            "login.anthropic.com",
+            // xAI / Grok
+            "auth.x.ai",
+            "login.x.ai",
+            "twitter.com/i/flow/login",
+            "x.com/i/flow/login",
+            // Auth0 (commonly used)
+            "auth0.com",
+            // Perplexity
+            "auth.perplexity.ai",
+            // Midjourney / Discord
+            "discord.com/login",
+            "discord.com/oauth2",
+            // HuggingFace
+            "huggingface.co/login",
+            "huggingface.co/oauth"
     );
 
     private static final List<String> AUTH_PATH_PATTERNS = List.of(

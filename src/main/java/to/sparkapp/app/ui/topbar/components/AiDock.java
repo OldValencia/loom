@@ -1,28 +1,25 @@
 package to.sparkapp.app.ui.topbar.components;
 
-import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Cursor;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Polygon;
-import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import to.sparkapp.app.config.AiConfiguration;
 import to.sparkapp.app.config.AppPaths;
 import to.sparkapp.app.config.AppPreferences;
 import to.sparkapp.app.ui.Theme;
+import to.sparkapp.app.ui.topbar.utils.AiDockDragManager;
 import to.sparkapp.app.ui.topbar.utils.AiDockIconUtils;
 import to.sparkapp.app.ui.topbar.utils.AiDockOrderUtils;
 import to.sparkapp.app.ui.webview.FxWebViewPane;
@@ -45,12 +42,12 @@ public class AiDock extends StackPane {
     static final int GAP = 8;
 
     private static final int MAX_DOCK_WIDTH = 500;
-    private static final int ARROW_WIDTH = 22;
-    private static final double SCROLL_STEP = 0.12;
-    private static final double HOLD_SCROLL_RATE = 0.010;
 
+    @Getter
     private final HBox dockContainer;
+    @Getter
     private final ScrollPane scrollPane;
+    @Getter
     private final List<DockItemNode> dockItems = new ArrayList<>();
     private final FxWebViewPane fxWebViewPane;
     private final AppPreferences appPreferences;
@@ -59,12 +56,17 @@ public class AiDock extends StackPane {
     private final StackPane rightArrow;
     private final Timeline arrowFadeTimeline = new Timeline();
 
+    @Getter
     private DockItemNode selectedNode = null;
     private boolean isDockHovered = false;
+
+    @Getter
+    private final AiDockDragManager dragManager;
 
     public AiDock(List<AiConfiguration.AiConfig> configs, FxWebViewPane fxWebViewPane, AppPreferences appPreferences) {
         this.fxWebViewPane = fxWebViewPane;
         this.appPreferences = appPreferences;
+        this.dragManager = new AiDockDragManager(this, appPreferences);
 
         var userIconsDir = new File(AppPaths.DATA_DIR, "icons");
 
@@ -94,8 +96,8 @@ public class AiDock extends StackPane {
             }
         });
 
-        leftArrow  = createArrow(true);
-        rightArrow = createArrow(false);
+        leftArrow  = new AiDockScrollArrow(true, this);
+        rightArrow = new AiDockScrollArrow(false, this);
 
         var arrowOverlay = new AnchorPane(leftArrow, rightArrow);
         arrowOverlay.setPickOnBounds(false);
@@ -175,7 +177,7 @@ public class AiDock extends StackPane {
         );
     }
 
-    private void refreshArrowOpacity() {
+    public void refreshArrowOpacity() {
         if (!isDockHovered || !hasOverflow()) return;
         leftArrow.setOpacity(canScrollLeft()  ? 1.0 : 0.25);
         rightArrow.setOpacity(canScrollRight() ? 1.0 : 0.25);
@@ -189,66 +191,6 @@ public class AiDock extends StackPane {
                 new KeyValue(rightArrow.opacityProperty(), rightTarget)
         ));
         arrowFadeTimeline.play();
-    }
-
-    private StackPane createArrow(boolean isLeft) {
-        var container = new StackPane();
-        container.setPrefWidth(ARROW_WIDTH);
-        container.setMinWidth(ARROW_WIDTH);
-        container.setMaxWidth(ARROW_WIDTH);
-        container.setAlignment(Pos.CENTER);
-        container.setCursor(Cursor.HAND);
-
-        var bg = new Rectangle();
-        bg.setArcWidth(8);
-        bg.setArcHeight(8);
-        bg.setFill(Theme.BG_HOVER);
-
-        var tri = new Polygon();
-        if (isLeft) {
-            tri.getPoints().addAll(-3.5, 0.0, 3.5, -5.0, 3.5, 5.0);
-        } else {
-            tri.getPoints().addAll(3.5, 0.0, -3.5, -5.0, -3.5, 5.0);
-        }
-        tri.setFill(Theme.TEXT_SECONDARY);
-
-        container.getChildren().addAll(bg, tri);
-
-        container.heightProperty().addListener((obs, old, h) -> {
-            bg.setWidth(ARROW_WIDTH);
-            bg.setHeight(h.doubleValue());
-        });
-
-        container.setOnMouseEntered(e -> tri.setFill(Theme.TEXT_PRIMARY));
-        container.setOnMouseExited(e -> tri.setFill(Theme.TEXT_SECONDARY));
-
-        var holdTimeline = new Timeline(new KeyFrame(Duration.millis(16), e -> {
-            double step = isLeft ? -HOLD_SCROLL_RATE : HOLD_SCROLL_RATE;
-            scrollPane.setHvalue(Math.max(0.0, Math.min(1.0, scrollPane.getHvalue() + step)));
-            refreshArrowOpacity();
-        }));
-        holdTimeline.setCycleCount(Animation.INDEFINITE);
-
-        var holdDelay = new Timeline(new KeyFrame(Duration.millis(350), e -> holdTimeline.play()));
-
-        container.setOnMousePressed(e -> {
-            double step = isLeft ? -SCROLL_STEP : SCROLL_STEP;
-            scrollPane.setHvalue(Math.max(0.0, Math.min(1.0, scrollPane.getHvalue() + step)));
-            refreshArrowOpacity();
-            holdDelay.playFromStart();
-            e.consume();
-        });
-        container.setOnMouseReleased(e -> {
-            holdDelay.stop();
-            holdTimeline.stop();
-        });
-        container.addEventHandler(MouseEvent.MOUSE_EXITED, e -> {
-            holdDelay.stop();
-            holdTimeline.stop();
-            tri.setFill(Theme.TEXT_SECONDARY);
-        });
-
-        return container;
     }
 
     public static void clearIconCache() {
@@ -269,34 +211,6 @@ public class AiDock extends StackPane {
         fxWebViewPane.setCurrentConfig(node.getConfig());
         if (appPreferences != null) appPreferences.setLastUrl(node.getConfig().url());
         updateTopBarColor();
-    }
-
-    public void handleDrag(DockItemNode draggedNode, double sceneX) {
-        var children = dockContainer.getChildren();
-        var currentIndex = children.indexOf(draggedNode);
-        var targetIndex = currentIndex;
-
-        for (int i = 0; i < children.size(); i++) {
-            var child = children.get(i);
-            var bounds = child.localToScene(child.getBoundsInLocal());
-            var centerX = bounds.getMinX() + bounds.getWidth() / 2;
-            if (sceneX < centerX) {
-                targetIndex = i;
-                break;
-            } else if (i == children.size() - 1) {
-                targetIndex = i;
-            }
-        }
-
-        if (targetIndex != currentIndex) {
-            children.remove(currentIndex);
-            children.add(targetIndex, draggedNode);
-            dockItems.clear();
-            for (var child : children) {
-                if (child instanceof DockItemNode din) dockItems.add(din);
-            }
-            AiDockOrderUtils.saveCurrentOrder(dockItems, appPreferences);
-        }
     }
 
     private void updateTopBarColor() {

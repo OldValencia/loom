@@ -1,4 +1,4 @@
-package to.sparkapp.app.windows;
+package to.sparkapp.app.utils;
 
 import javafx.scene.Node;
 import javafx.stage.Stage;
