@@ -53,10 +53,22 @@ public class WebviewManager {
                 }, {passive: false});
             
                 document.addEventListener('keydown', function(e) {
+                    // Block Alt + Left / Alt + Right (Browser Back/Forward)
+                    if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                        e.preventDefault();
+                        return;
+                    }
+
                     if (!e.ctrlKey) return;
-                    if (e.key === '=' || e.key === '+') { e.preventDefault(); window.sparkCall('zoom', 'up'); }
-                    if (e.key === '-')                  { e.preventDefault(); window.sparkCall('zoom', 'down'); }
-                    if (e.key === '0')                  { e.preventDefault(); window.sparkCall('zoom', 'reset'); }
+
+                    // Zoom with support for non-English layouts using e.code
+                    if (e.code === 'Equal' || e.code === 'NumpadAdd' || e.key === '=' || e.key === '+') {
+                        e.preventDefault(); window.sparkCall('zoom', 'up');
+                    } else if (e.code === 'Minus' || e.code === 'NumpadSubtract' || e.key === '-') {
+                        e.preventDefault(); window.sparkCall('zoom', 'down');
+                    } else if (e.code === 'Digit0' || e.code === 'Numpad0' || e.key === '0') {
+                        e.preventDefault(); window.sparkCall('zoom', 'reset');
+                    }
                 });
             
                 document.addEventListener('click', function(e) {
@@ -92,6 +104,7 @@ public class WebviewManager {
                 var _replace = history.replaceState;
                 history.replaceState = function() { _replace.apply(this, arguments); window.sparkCall('urlChanged', window.location.href); };
                 window.addEventListener('popstate', function() { window.sparkCall('urlChanged', window.location.href); });
+                window.addEventListener('hashchange', function() { window.sparkCall('urlChanged', window.location.href); });
             })();
             """;
 
