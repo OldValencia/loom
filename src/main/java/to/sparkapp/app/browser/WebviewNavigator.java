@@ -95,7 +95,7 @@ public class WebviewNavigator {
     }
 
     void handleUrlChange(String url) {
-        if (url.isBlank() || url.equals("about:blank")) return;
+        if (url.isBlank() || url.equals("about:blank") || url.startsWith("chrome-error://")) return;
 
         if (onUrlChanged != null) onUrlChanged.accept(url);
 
