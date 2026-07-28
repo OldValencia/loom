@@ -184,7 +184,7 @@ public class WebviewNavigator {
             var host1 = normalizeHost(URI.create(url).getHost());
             var host2 = normalizeHost(URI.create(baseUrl).getHost());
             if (host1 == null || host2 == null) return true;
-            return host1.equals(host2) || host1.endsWith("." + host2) || host2.endsWith("." + host1);
+            return host1.equals(host2) || host1.endsWith("." + host2);
         } catch (Exception e) {
             return true;
         }
