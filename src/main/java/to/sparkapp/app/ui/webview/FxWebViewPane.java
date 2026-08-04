@@ -108,12 +108,26 @@ public class FxWebViewPane extends StackPane {
                     if (isShowing) {
                         if (!bridgeStarted) {
                             startBridgeIfReady();
+                        } else {
+                            syncBounds();
+                            Platform.runLater(this::syncBounds);
                         }
                     } else if (bridgeStarted) {
                         bridge.hibernate();
                     }
                 });
+
+                newWin.xProperty().addListener((o, old, n) -> syncBounds());
+                newWin.yProperty().addListener((o, old, n) -> syncBounds());
+                newWin.widthProperty().addListener((o, old, n) -> syncBounds());
+                newWin.heightProperty().addListener((o, old, n) -> syncBounds());
+                newWin.outputScaleXProperty().addListener((o, old, n) -> syncBounds());
+                newWin.outputScaleYProperty().addListener((o, old, n) -> syncBounds());
             });
+
+            if (newScene.getWindow() != null && newScene.getWindow().isShowing() && !bridgeStarted) {
+                startBridgeIfReady();
+            }
         });
     }
 
@@ -154,8 +168,10 @@ public class FxWebViewPane extends StackPane {
             return;
         }
 
+        int[] initialBounds = calculateCurrentBounds();
         bridgeStarted = true;
-        bridge.init(startUrl, parentHandle, 0, 0, 10, 10);
+        bridge.init(startUrl, parentHandle, initialBounds[0], initialBounds[1], initialBounds[2], initialBounds[3]);
+        syncBounds();
         Platform.runLater(this::syncBounds);
     }
 
@@ -198,17 +214,29 @@ public class FxWebViewPane extends StackPane {
         getScene().getRoot().applyCss();
         getScene().getRoot().layout();
         syncBounds();
+        Platform.runLater(this::syncBounds);
     }
 
     void syncBounds() {
         if (!bridgeStarted || getScene() == null || getScene().getWindow() == null) {
             return;
         }
+        int[] b = calculateCurrentBounds();
+        if (b[2] <= 0 || b[3] <= 0) {
+            return;
+        }
+        bridge.updateBounds(b[0], b[1], b[2], b[3]);
+    }
+
+    private int[] calculateCurrentBounds() {
+        if (getScene() == null || getScene().getWindow() == null) {
+            return new int[]{0, 0, (int) Math.round(getWidth()), (int) Math.round(getHeight())};
+        }
         var window = getScene().getWindow();
         var scene = getScene();
         var bounds = localToScene(getBoundsInLocal());
-        if (bounds == null) {
-            return;
+        if (bounds == null || bounds.getWidth() <= 0 || bounds.getHeight() <= 0) {
+            return new int[]{0, 0, (int) Math.round(getWidth()), (int) Math.round(getHeight())};
         }
 
         int x, y, w, h;
@@ -225,8 +253,7 @@ public class FxWebViewPane extends StackPane {
             w = (int) Math.round(bounds.getWidth());
             h = (int) Math.round(bounds.getHeight());
         }
-
-        bridge.updateBounds(x, y, w, h);
+        return new int[]{x, y, w, h};
     }
 
     /**
