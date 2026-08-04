@@ -148,18 +148,20 @@ public class WebviewManager {
                         NativeWindowUtils.setVisible(nativeHandle, false);
                         NativeWindowUtils.setBounds(nativeHandle, 15000, 15000, 10, 10);
                         NativeWindowUtils.unparent(nativeHandle);
-                    } else if (!firstStart) {
+                    } else if (parentHandle != 0) {
+                        NativeWindowUtils.setParent(nativeHandle, parentHandle);
                         NativeWindowUtils.setVisible(nativeHandle, false);
-                        NativeWindowUtils.setBounds(nativeHandle, 15000, 15000, 10, 10);
-                        if (parentHandle != 0) {
-                            NativeWindowUtils.setParent(nativeHandle, parentHandle);
+                        if (nativeW > 0 && nativeH > 0) {
+                            NativeWindowUtils.setBounds(nativeHandle, nativeX, nativeY, nativeW, nativeH);
                         }
                     }
                 }
 
                 setupJsApi();
                 webview.setInitScript(INIT_SCRIPTS);
-                webview.setSize(nativeW, nativeH);
+                if (nativeW > 0 && nativeH > 0) {
+                    webview.setSize(nativeW, nativeH);
+                }
 
                 var urlToLoad = initialUrl != null ? initialUrl : "about:blank";
                 webview.loadURL(urlToLoad);
@@ -175,6 +177,9 @@ public class WebviewManager {
                             NativeWindowUtils.unparent(nativeHandle);
                         } else if (parentHandle != 0) {
                             NativeWindowUtils.setParent(nativeHandle, parentHandle);
+                            if (nativeW > 0 && nativeH > 0) {
+                                webview.setSize(nativeW, nativeH);
+                            }
                             NativeWindowUtils.setBounds(nativeHandle, nativeX, nativeY, nativeW, nativeH);
                             NativeWindowUtils.setVisible(nativeHandle, true);
                         }
@@ -291,6 +296,9 @@ public class WebviewManager {
     }
 
     public void updateBounds(int x, int y, int width, int height) {
+        if (width <= 0 || height <= 0) {
+            return;
+        }
         this.nativeX = x;
         this.nativeY = y;
         this.nativeW = width;
@@ -342,6 +350,13 @@ public class WebviewManager {
             startWebviewThread(navigator.getCurrentUrl());
         } else {
             NativeWindowUtils.setParent(nativeHandle, this.parentHandle);
+            if (nativeW > 0 && nativeH > 0) {
+                dispatch(() -> {
+                    if (webview != null) {
+                        webview.setSize(nativeW, nativeH);
+                    }
+                });
+            }
             NativeWindowUtils.setBounds(nativeHandle, nativeX, nativeY, nativeW, nativeH);
             NativeWindowUtils.setVisible(nativeHandle, true);
         }

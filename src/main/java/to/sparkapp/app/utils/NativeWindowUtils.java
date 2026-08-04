@@ -17,11 +17,25 @@ public final class NativeWindowUtils {
 
     // Win32 style / SetWindowPos constants
     private static final int GWL_STYLE = -16;
+    private static final int GWL_EXSTYLE = -20;
+
     private static final int WS_POPUP = 0x80000000;
     private static final int WS_CHILD = 0x40000000;
+    private static final int WS_CLIPSIBLINGS = 0x04000000;
+    private static final int WS_CLIPCHILDREN = 0x02000000;
     private static final int WS_CAPTION = 0x00C00000;
-    private static final int WS_THICKFRAME = 0x00040000;
     private static final int WS_BORDER = 0x00800000;
+    private static final int WS_DLGFRAME = 0x00400000;
+    private static final int WS_SYSMENU = 0x00080000;
+    private static final int WS_THICKFRAME = 0x00040000;
+    private static final int WS_MINIMIZEBOX = 0x00020000;
+    private static final int WS_MAXIMIZEBOX = 0x00010000;
+
+    private static final int WS_EX_DLGMODALFRAME = 0x00000001;
+    private static final int WS_EX_WINDOWEDGE = 0x00000100;
+    private static final int WS_EX_CLIENTEDGE = 0x00000200;
+    private static final int WS_EX_STATICEDGE = 0x00020000;
+    private static final int WS_EX_APPWINDOW = 0x00040000;
 
     private static final int SWP_NOSIZE = 0x0001;
     private static final int SWP_NOMOVE = 0x0002;
@@ -45,19 +59,19 @@ public final class NativeWindowUtils {
         }
     }
 
-    private static int getWindowStyle(WinDef.HWND hwnd) {
+    private static int getWindowLong(WinDef.HWND hwnd, int index) {
         if (Platform.is64Bit()) {
-            return User32.INSTANCE.GetWindowLongPtr(hwnd, GWL_STYLE).intValue();
+            return User32.INSTANCE.GetWindowLongPtr(hwnd, index).intValue();
         } else {
-            return User32.INSTANCE.GetWindowLong(hwnd, GWL_STYLE);
+            return User32.INSTANCE.GetWindowLong(hwnd, index);
         }
     }
 
-    private static void setWindowStyle(WinDef.HWND hwnd, int style) {
+    private static void setWindowLong(WinDef.HWND hwnd, int index, int value) {
         if (Platform.is64Bit()) {
-            User32.INSTANCE.SetWindowLongPtr(hwnd, GWL_STYLE, new Pointer(style));
+            User32.INSTANCE.SetWindowLongPtr(hwnd, index, new Pointer(value));
         } else {
-            User32.INSTANCE.SetWindowLong(hwnd, GWL_STYLE, style);
+            User32.INSTANCE.SetWindowLong(hwnd, index, value);
         }
     }
 
@@ -68,10 +82,17 @@ public final class NativeWindowUtils {
         try {
             var child = new WinDef.HWND(new Pointer(childHandle));
             var parent = new WinDef.HWND(new Pointer(parentHandle));
-            var style = getWindowStyle(child);
 
-            style = (style & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_BORDER)) | WS_CHILD;
-            setWindowStyle(child, style);
+            int style = getWindowLong(child, GWL_STYLE);
+            style = (style & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_BORDER |
+                    WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_DLGFRAME))
+                    | WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+            setWindowLong(child, GWL_STYLE, style);
+
+            int exStyle = getWindowLong(child, GWL_EXSTYLE);
+            exStyle = exStyle & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE |
+                    WS_EX_STATICEDGE | WS_EX_APPWINDOW);
+            setWindowLong(child, GWL_EXSTYLE, exStyle);
 
             User32.INSTANCE.SetParent(child, parent);
 
@@ -93,10 +114,10 @@ public final class NativeWindowUtils {
         if (!SystemUtils.isWindows() || childHandle == 0) return;
         try {
             var child = new WinDef.HWND(new Pointer(childHandle));
-            var style = getWindowStyle(child);
+            int style = getWindowLong(child, GWL_STYLE);
 
             style = (style & ~WS_CHILD) | WS_POPUP;
-            setWindowStyle(child, style);
+            setWindowLong(child, GWL_STYLE, style);
 
             User32.INSTANCE.SetParent(child, null);
 
@@ -124,6 +145,9 @@ public final class NativeWindowUtils {
     }
 
     private static void setBoundsWindows(long handle, int x, int y, int width, int height) {
+        if (width <= 0 || height <= 0) {
+            return;
+        }
         try {
             var hwnd = new WinDef.HWND(new Pointer(handle));
             User32.INSTANCE.SetWindowPos(hwnd, null, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
