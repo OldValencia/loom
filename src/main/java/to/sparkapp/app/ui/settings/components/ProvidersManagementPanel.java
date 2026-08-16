@@ -72,9 +72,8 @@ public class ProvidersManagementPanel extends VBox {
         if (dialog.isConfirmed()) {
             var name = dialog.getProviderName();
             var url = dialog.getProviderUrl();
-            var color = String.format("#%06x", (int) (Math.random() * 0xFFFFFF));
 
-            executeAsyncOp(() -> providersManager.addCustomProvider(name, url, color));
+            executeAsyncOp(() -> providersManager.addCustomProvider(name, url));
         }
     }
 
