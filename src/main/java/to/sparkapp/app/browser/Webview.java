@@ -1,7 +1,5 @@
 package to.sparkapp.app.browser;
 
-import com.sun.jna.Pointer;
-
 import java.io.Closeable;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -43,17 +41,6 @@ class Webview implements Closeable {
     }
 
     /**
-     * Creates a new standalone Webview instance.
-     *
-     * @param debug Enables browser developer tools/inspector if true.
-     * @param parentHandle ID родительского окна JavaFX (0 если нет)
-     */
-    Webview(boolean debug, long parentHandle) {
-        var parentPtr = parentHandle == 0 ? null : Pointer.createConstant(parentHandle);
-        this.nativePointer = WEBVIEW_NATIVE.webview_create(debug, parentPtr);
-    }
-
-    /**
      * Retrieves the native OS window handle (HWND on Windows, NSWindow on Mac).
      *
      * @return The native window pointer.
@@ -63,28 +50,12 @@ class Webview implements Closeable {
     }
 
     /**
-     * Loads raw HTML content into the webview.
-     *
-     * @param html The raw HTML string.
-     */
-    void setHtml(String html) {
-        WEBVIEW_NATIVE.webview_set_html(nativePointer, html);
-    }
-
-    /**
      * Navigates the webview to the specified URL.
      *
      * @param url The target URL (e.g., "https://google.com").
      */
     void loadURL(String url) {
         WEBVIEW_NATIVE.webview_navigate(nativePointer, url != null ? url : "about:blank");
-    }
-
-    /**
-     * Resizes the webview window or internal canvas.
-     */
-    void setSize(int width, int height) {
-        WEBVIEW_NATIVE.webview_set_size(nativePointer, width, height, WV_HINT_NONE);
     }
 
     /**
@@ -144,14 +115,6 @@ class Webview implements Closeable {
     }
 
     /**
-     * Removes a previously bound JavaScript function.
-     */
-    void unbind(String name) {
-        WEBVIEW_NATIVE.webview_unbind(nativePointer, name);
-        activeBinds.remove(name);
-    }
-
-    /**
      * Safely dispatches a runnable to be executed on the Webview's native thread.
      */
     void dispatch(Runnable handler) {
@@ -189,18 +152,6 @@ class Webview implements Closeable {
     @Override
     public void close() {
         WEBVIEW_NATIVE.webview_terminate(nativePointer);
-    }
-
-    /**
-     * Returns the underlying native library version.
-     */
-    static String getVersion() {
-        var bytes = WEBVIEW_NATIVE.webview_version().version_number;
-        var length = 0;
-        while (length < bytes.length && bytes[length] != 0) {
-            length++;
-        }
-        return new String(bytes, 0, length);
     }
 
     private static String getStackTraceAsString(Throwable e) {

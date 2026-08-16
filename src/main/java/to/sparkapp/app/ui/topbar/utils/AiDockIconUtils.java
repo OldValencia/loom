@@ -16,6 +16,13 @@ import java.io.File;
 @Slf4j
 public class AiDockIconUtils {
 
+    /**
+     * Icons are rasterised at three times their layout size so that they stay sharp on
+     * HiDPI monitors (up to 300 % scaling); the ImageView scales them back down.
+     */
+    private static final int RENDER_SCALE = 3;
+    private static final int RENDER_SIZE = AiDock.ICON_SIZE * RENDER_SCALE;
+
     public static void preloadIcon(AiConfiguration.AiConfig cfg, File userIconsDir) {
         if (cfg.icon() == null) {
             return;
@@ -54,11 +61,11 @@ public class AiDockIconUtils {
     }
 
     private static javafx.scene.image.Image renderSvgToFx(com.formdev.flatlaf.extras.FlatSVGIcon icon) {
-        int padding = 2;
-        int innerSize = AiDock.ICON_SIZE - padding * 2;
+        int padding = 2 * RENDER_SCALE;
+        int innerSize = RENDER_SIZE - padding * 2;
 
         var scaledIcon = icon.derive(innerSize, innerSize);
-        var img = new java.awt.image.BufferedImage(AiDock.ICON_SIZE, AiDock.ICON_SIZE, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        var img = new java.awt.image.BufferedImage(RENDER_SIZE, RENDER_SIZE, java.awt.image.BufferedImage.TYPE_INT_ARGB);
         var g = img.createGraphics();
 
         g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
@@ -71,12 +78,12 @@ public class AiDockIconUtils {
     }
 
     private static Image resizeToFx(BufferedImage img) {
-        var resized = new BufferedImage(AiDock.ICON_SIZE, AiDock.ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
+        var resized = new BufferedImage(RENDER_SIZE, RENDER_SIZE, BufferedImage.TYPE_INT_ARGB);
         var g = resized.createGraphics();
 
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        g.drawImage(img, 0, 0, AiDock.ICON_SIZE, AiDock.ICON_SIZE, null);
+        g.drawImage(img, 0, 0, RENDER_SIZE, RENDER_SIZE, null);
         g.dispose();
 
         return SwingFXUtils.toFXImage(resized, null);

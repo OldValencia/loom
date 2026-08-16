@@ -26,8 +26,6 @@ public final class NativeWindowUtils {
 
     public static final int DEFAULT_DPI = 96;
 
-    public static volatile double cachedWebviewHeight = 0;
-
     // Win32 style / SetWindowPos constants
     private static final int GWL_STYLE = -16;
     private static final int GWL_EXSTYLE = -20;

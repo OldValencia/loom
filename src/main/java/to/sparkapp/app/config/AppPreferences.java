@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import to.sparkapp.app.utils.AutoStartManager;
+import to.sparkapp.app.utils.UrlUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -99,7 +100,7 @@ public class AppPreferences {
     /**
      * Immediate, synchronous write — used for settings that change rarely.
      */
-    private void save() {
+    private synchronized void save() {
         new File(AppPaths.DIR).mkdirs();
         try {
             mapper.writerWithDefaultPrettyPrinter().writeValue(FILE, config);
@@ -118,6 +119,18 @@ public class AppPreferences {
             pendingDebouncedSave.cancel(false);
         }
         pendingDebouncedSave = saveScheduler.schedule(this::save, 500, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Writes any pending debounced changes straight away. Must be called before the
+     * process exits, otherwise the last URL and zoom level are silently lost.
+     */
+    public void flush() {
+        var pending = pendingDebouncedSave;
+        if (pending != null && !pending.isDone()) {
+            pending.cancel(false);
+            save();
+        }
     }
 
     // Last-URL — debounced because the webview fires a URL-change event for
@@ -159,10 +172,11 @@ public class AppPreferences {
 
     public void setZoomEnabled(boolean zoomEnabled) {
         config.zoomEnabled = zoomEnabled;
-        save();
         if (!zoomEnabled) {
-            setLastZoomValue(0.0);
+            // Written directly: setLastZoomValue() is a no-op once zoom is disabled.
+            config.lastZoomValue = 0.0;
         }
+        save();
     }
 
     public boolean isZoomEnabled() {
@@ -226,23 +240,23 @@ public class AppPreferences {
         return Boolean.TRUE.equals(config.darkModeEnabled);
     }
 
+    /**
+     * Drops the remembered URL only when it no longer belongs to any configured
+     * provider. A deep link such as {@code gemini.google.com/app/<id>} is kept, so
+     * the app reopens on the exact conversation the user left.
+     */
     public void cleanupLastUrlIfNeeded(List<String> validUrls) {
-        if (config.lastUrl != null && !validUrls.contains(config.lastUrl)) {
-
-            if (config.lastUrl.endsWith("/")) {
-                var fixedUrl = config.lastUrl.substring(0, config.lastUrl.length() - 1);
-                if (validUrls.contains(fixedUrl)) {
-                    log.info("Fixing lastUrl trailing slash: {} -> {}", config.lastUrl, fixedUrl);
-                    config.lastUrl = fixedUrl;
-                    save();
-                    return;
-                }
-            }
-
-            log.info("Removing invalid lastUrl: {}", config.lastUrl);
-            config.lastUrl = null;
-            save();
+        if (config.lastUrl == null || validUrls.contains(config.lastUrl)) {
+            return;
         }
+
+        if (UrlUtils.matchingBaseUrl(config.lastUrl, validUrls) != null) {
+            return;
+        }
+
+        log.info("Removing lastUrl of an unknown provider: {}", config.lastUrl);
+        config.lastUrl = null;
+        save();
     }
 
     @Data

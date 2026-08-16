@@ -178,6 +178,7 @@ public class CustomAiProvidersManager {
 
             if (iconFile.length() < 100) {
                 log.warn("Downloaded icon is too small (likely placeholder): {}", iconFile.length());
+                Files.deleteIfExists(iconFile.toPath());
                 return null;
             }
 

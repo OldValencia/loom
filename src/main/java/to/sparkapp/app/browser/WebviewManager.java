@@ -122,7 +122,6 @@ public class WebviewManager {
         this.nativeY = y;
         this.nativeW = width;
         this.nativeH = height;
-        NativeWindowUtils.cachedWebviewHeight = height;
 
         startWebviewThread(startUrl);
     }
@@ -297,7 +296,6 @@ public class WebviewManager {
         this.nativeY = y;
         this.nativeW = width;
         this.nativeH = height;
-        NativeWindowUtils.cachedWebviewHeight = height;
 
         if (!ready.get()) {
             return;
@@ -376,8 +374,8 @@ public class WebviewManager {
         navigator.setOnUrlChanged(callback);
     }
 
-    public void setCurrentConfig(AiConfiguration.AiConfig config) {
-        navigator.setCurrentConfig(config);
+    public void setCurrentConfig(AiConfiguration.AiConfig config, String targetUrl) {
+        navigator.setCurrentConfig(config, targetUrl);
     }
 
     public void clearCookies() {

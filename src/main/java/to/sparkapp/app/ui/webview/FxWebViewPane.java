@@ -391,15 +391,16 @@ public class FxWebViewPane extends StackPane {
     }
 
     /**
-     * Navigates the webview to the given AI provider.
-     * Shows a loading overlay while the page transitions.
+     * Navigates the webview to the given AI provider, or to {@code targetUrl} when it
+     * points at a page of that provider. Shows a loading overlay while the page
+     * transitions.
      */
-    public void setCurrentConfig(AiConfiguration.AiConfig config) {
+    public void setCurrentConfig(AiConfiguration.AiConfig config, String targetUrl) {
         var icon = AiDock.ICON_CACHE.get(config.icon());
 
         if (!bridgeStarted) {
             overlay.activate(icon, 0, null);
-            bridge.setCurrentConfig(config);
+            bridge.setCurrentConfig(config, targetUrl);
             return;
         }
 
@@ -409,7 +410,7 @@ public class FxWebViewPane extends StackPane {
             bridge.setVisible(true);
         });
 
-        bridge.setCurrentConfig(config);
+        bridge.setCurrentConfig(config, targetUrl);
     }
 
     public void clearCookies() {

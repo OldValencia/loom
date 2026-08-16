@@ -19,8 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.io.IOException;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -33,7 +31,6 @@ public class MainWindow extends Stage {
     private SettingsWindow settingsWindow;
     private BorderPane rootPane;
     private GlobalHotkeyManager globalHotkeyManager;
-    private SplashScreen splashScreen;
 
     // Сохраняем иконку трея, чтобы можно было удалить её при выходе
     private TrayIcon trayIcon;
@@ -230,6 +227,7 @@ public class MainWindow extends Stage {
 
         this.hide();
         AiDock.clearIconCache();
+        appPreferences.flush();
 
         if (trayIcon != null && SystemTray.isSupported()) {
             SystemTray.getSystemTray().remove(trayIcon);
@@ -254,14 +252,9 @@ public class MainWindow extends Stage {
 
     private void initializeOnFX() {
         try {
-            splashScreen = new SplashScreen();
-            splashScreen.showSplash();
-
             rootPane = createRootPane();
             Scene scene = new Scene(rootPane, WIDTH, HEIGHT, Color.TRANSPARENT);
             this.setScene(scene);
-
-            if (splashScreen != null) splashScreen.updateStatus("Initializing browser engine...");
 
             fxWebViewPane = getFxWebViewPane();
             rootPane.setCenter(fxWebViewPane);
@@ -281,6 +274,7 @@ public class MainWindow extends Stage {
             var settingsPanel = new SettingsPanel(appPreferences, globalHotkeyManager, aiConfiguration);
             settingsPanel.setOnRememberLastAiChanged(appPreferences::setRememberLastAi);
             settingsPanel.setOnClearCookies(fxWebViewPane::clearCookies);
+            settingsPanel.setOnZoomEnabledChanged(enabled -> fxWebViewPane.resetZoom());
             settingsPanel.setOnProvidersChanged(this::handleProvidersChanged);
 
             settingsWindow = new SettingsWindow(this, settingsPanel);
@@ -291,24 +285,12 @@ public class MainWindow extends Stage {
 
             setupTray();
 
-            var showTimer = new Timer();
-            showTimer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    Platform.runLater(() -> {
-                        if (splashScreen != null) {
-                            splashScreen.hideSplash();
-                        }
-                        if (!appPreferences.isStartApplicationHiddenEnabled()) {
-                            show();
-                        }
-                    });
-                }
-            }, 500);
+            if (!appPreferences.isStartApplicationHiddenEnabled()) {
+                show();
+            }
 
         } catch (Exception e) {
             log.error("Failed to initialize application", e);
-            if (splashScreen != null) splashScreen.hideSplash();
             System.exit(1);
         }
     }

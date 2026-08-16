@@ -23,6 +23,7 @@ import to.sparkapp.app.ui.topbar.utils.AiDockDragManager;
 import to.sparkapp.app.ui.topbar.utils.AiDockIconUtils;
 import to.sparkapp.app.ui.topbar.utils.AiDockOrderUtils;
 import to.sparkapp.app.ui.webview.FxWebViewPane;
+import to.sparkapp.app.utils.UrlUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -91,7 +92,7 @@ public class AiDock extends StackPane {
         scrollPane.addEventFilter(ScrollEvent.SCROLL, e -> {
             double delta = e.getDeltaY();
             if (delta != 0) {
-                scrollPane.setHvalue(Math.max(0.0, Math.min(1.0, scrollPane.getHvalue() - delta / 200.0)));
+                scrollPane.setHvalue(Math.clamp(scrollPane.getHvalue() - delta / 200.0, 0.0, 1.0));
                 e.consume();
             }
         });
@@ -134,11 +135,17 @@ public class AiDock extends StackPane {
         var orderedConfigs = AiDockOrderUtils.applyCustomOrder(configs, appPreferences);
         var lastUrl = appPreferences.getLastUrl();
         int initialIndex = 0;
+        String initialUrl = null;
 
+        // The remembered URL is usually a page inside a provider (a conversation),
+        // so the provider is matched by host rather than by an exact URL match.
         if (lastUrl != null) {
             for (int i = 0; i < orderedConfigs.size(); i++) {
-                if (orderedConfigs.get(i).url().equals(lastUrl)) {
+                var configUrl = orderedConfigs.get(i).url();
+                if (configUrl.equals(lastUrl)
+                        || UrlUtils.matchingBaseUrl(lastUrl, List.of(configUrl)) != null) {
                     initialIndex = i;
+                    initialUrl = lastUrl;
                     break;
                 }
             }
@@ -151,7 +158,7 @@ public class AiDock extends StackPane {
             dockContainer.getChildren().add(node);
         }
 
-        if (!dockItems.isEmpty()) selectItem(dockItems.get(initialIndex));
+        if (!dockItems.isEmpty()) selectItem(dockItems.get(initialIndex), initialUrl);
     }
 
     private boolean hasOverflow() {
@@ -204,12 +211,21 @@ public class AiDock extends StackPane {
     }
 
     public void selectItem(DockItemNode node) {
+        selectItem(node, null);
+    }
+
+    /**
+     * @param targetUrl page of the provider to open instead of its base URL, or {@code null}
+     */
+    private void selectItem(DockItemNode node, String targetUrl) {
         if (selectedNode == node) return;
         if (selectedNode != null) selectedNode.setSelected(false);
         selectedNode = node;
         selectedNode.setSelected(true);
-        fxWebViewPane.setCurrentConfig(node.getConfig());
-        if (appPreferences != null) appPreferences.setLastUrl(node.getConfig().url());
+        fxWebViewPane.setCurrentConfig(node.getConfig(), targetUrl);
+        if (appPreferences != null) {
+            appPreferences.setLastUrl(targetUrl != null ? targetUrl : node.getConfig().url());
+        }
         updateTopBarColor();
     }
 
