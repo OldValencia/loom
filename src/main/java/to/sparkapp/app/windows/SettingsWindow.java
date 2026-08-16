@@ -10,10 +10,11 @@ import javafx.stage.StageStyle;
 import javafx.stage.Window;
 import to.sparkapp.app.ui.Theme;
 import to.sparkapp.app.ui.settings.SettingsPanel;
+import to.sparkapp.app.ui.topbar.TopBarArea;
 
 public class SettingsWindow {
 
-    private static final int TOPBAR_HEIGHT = 48;
+    private static final int TOPBAR_HEIGHT = TopBarArea.HEIGHT;
     private static final double LERP_SPEED = 0.22;
 
     private final Window owner;

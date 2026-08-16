@@ -16,6 +16,8 @@ public class TopBarArea extends GradientPanel {
     private final Stage frame;
     private final SettingsWindow settingsWindow;
 
+    public static final int HEIGHT = 48;
+
     private double xOffset = 0;
     private double yOffset = 0;
 
@@ -36,7 +38,9 @@ public class TopBarArea extends GradientPanel {
         this.frame = frame;
         this.settingsWindow = settingsWindow;
 
-        this.setPrefSize(frame.getWidth(), 48);
+        this.setPrefSize(frame.getWidth(), HEIGHT);
+        this.setMinHeight(HEIGHT);
+        this.setMaxHeight(HEIGHT);
         this.setLeft(new LeftTopBarArea(aiConfiguration, fxWebViewPane, appPreferences));
         this.setRight(new RightTopBarArea(fxWebViewPane, onSettingsToggle, onCloseWindow));
 
