@@ -1,7 +1,8 @@
 package to.sparkapp.app.utils;
 
+import com.sun.jna.platform.win32.Advapi32Util;
+import com.sun.jna.platform.win32.WinReg;
 import to.sparkapp.app.config.AppPaths;
-import to.sparkapp.app.config.AppPreferences;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -10,6 +11,7 @@ import java.io.FileWriter;
 @Slf4j
 public class AutoStartManager {
     private static final String APP_NAME = "Spark";
+    private static final String RUN_KEY = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 
     public static void setAutoStart(boolean enable) {
         try {
@@ -30,13 +32,26 @@ public class AutoStartManager {
         }
     }
 
-    private static void handleWindows(boolean enable, String path) throws Exception {
-        var key = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-        if (enable) {
-            new ProcessBuilder("reg", "add", key, "/v", APP_NAME, "/t", "REG_SZ", "/d", path, "/f").start();
-        } else {
-            new ProcessBuilder("reg", "delete", key, "/v", APP_NAME, "/f").start();
+    private static void handleWindows(boolean enable, String path) {
+        if (!enable) {
+            if (Advapi32Util.registryValueExists(WinReg.HKEY_CURRENT_USER, RUN_KEY, APP_NAME)) {
+                Advapi32Util.registryDeleteValue(WinReg.HKEY_CURRENT_USER, RUN_KEY, APP_NAME);
+                log.info("Auto start disabled");
+            }
+            return;
         }
+
+        var executable = path.toLowerCase();
+        if (executable.endsWith("java.exe") || executable.endsWith("javaw.exe")) {
+            // Happens when the app runs from a JDK launcher (IDE / Gradle) instead of the
+            // installed launcher: registering it would start a bare JVM at logon.
+            log.warn("Auto start skipped, not running from the installed launcher: {}", path);
+            return;
+        }
+
+        // Quoted so that Windows does not truncate paths containing spaces.
+        Advapi32Util.registrySetStringValue(WinReg.HKEY_CURRENT_USER, RUN_KEY, APP_NAME, "\"" + path + "\"");
+        log.info("Auto start enabled for {}", path);
     }
 
     private static void handleMac(boolean enable, String path) throws Exception {

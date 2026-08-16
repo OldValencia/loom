@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import to.sparkapp.app.utils.DominantColorExtractor;
+import to.sparkapp.app.utils.UrlUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,11 +46,52 @@ public class CustomAiProvidersManager {
         }
 
         try {
-            return jsonMapper.readValue(configFile, new TypeReference<>() {});
+            List<AiConfiguration.AiConfig> providers = jsonMapper.readValue(configFile, new TypeReference<>() {});
+            return refreshAccentColors(providers);
         } catch (IOException e) {
             log.error("Failed to load providers", e);
             return new ArrayList<>();
         }
+    }
+
+    /**
+     * Re-derives the accent colour of providers that use a downloaded icon, so entries
+     * created before the colour was extracted from the logo get corrected as well.
+     * Bundled providers keep their curated colours: their icons are SVG, which the
+     * extractor cannot read, and it leaves the stored value alone in that case.
+     */
+    private List<AiConfiguration.AiConfig> refreshAccentColors(List<AiConfiguration.AiConfig> providers) {
+        var updated = new ArrayList<AiConfiguration.AiConfig>(providers.size());
+        var changed = false;
+
+        for (var provider : providers) {
+            var color = accentFromIcon(provider.icon());
+            if (color == null || color.equalsIgnoreCase(provider.color())) {
+                updated.add(provider);
+                continue;
+            }
+
+            log.info("Provider {}: accent colour {} -> {} (from its icon)", provider.name(), provider.color(), color);
+            updated.add(new AiConfiguration.AiConfig(
+                    provider.id(), provider.name(), provider.url(), color, provider.icon()));
+            changed = true;
+        }
+
+        if (changed) {
+            saveProviders(updated);
+        }
+        return updated;
+    }
+
+    /**
+     * @return colour taken from the provider's downloaded icon, or {@code null} when
+     *         there is no raster icon to read
+     */
+    private String accentFromIcon(String iconName) {
+        if (iconName == null || iconName.isBlank() || iconName.toLowerCase().endsWith(".svg")) {
+            return null;
+        }
+        return DominantColorExtractor.fromImage(new File(iconsDir, iconName));
     }
 
     public void restoreDefaults() {
@@ -123,24 +166,47 @@ public class CustomAiProvidersManager {
         }
     }
 
-    public void addCustomProvider(String name, String url, String color) {
+    public void addCustomProvider(String name, String url) {
         List<AiConfiguration.AiConfig> current = loadProviders();
 
         String id = "custom_" + UUID.randomUUID().toString().substring(0, 8);
         String iconFilename = downloadFavicon(url, id);
 
-        current.add(new AiConfiguration.AiConfig(id, name, url, color, iconFilename));
+        current.add(new AiConfiguration.AiConfig(id, name, url, resolveAccentColor(url, iconFilename), iconFilename));
         saveProviders(current);
+    }
+
+    /**
+     * Accent of a provider: the dominant colour of its logo, falling back to a hue
+     * derived from the host so that it is at least stable across restarts.
+     */
+    private String resolveAccentColor(String url, String iconFilename) {
+        var color = accentFromIcon(iconFilename);
+        return color != null ? color : DominantColorExtractor.fromHost(url);
     }
 
     public void updateProvider(String id, String name, String url, String color) {
         List<AiConfiguration.AiConfig> current = loadProviders();
         for (int i = 0; i < current.size(); i++) {
-            if (current.get(i).id().equals(id)) {
-                String oldIcon = current.get(i).icon();
-                current.set(i, new AiConfiguration.AiConfig(id, name, url, color, oldIcon));
-                break;
+            var existing = current.get(i);
+            if (!existing.id().equals(id)) {
+                continue;
             }
+
+            var icon = existing.icon();
+            var accent = color;
+
+            // Moving a custom provider to another site invalidates its logo.
+            if (id.startsWith("custom_") && !UrlUtils.isSameHost(url, existing.url())) {
+                var newIcon = downloadFavicon(url, id);
+                if (newIcon != null) {
+                    icon = newIcon;
+                }
+                accent = resolveAccentColor(url, icon);
+            }
+
+            current.set(i, new AiConfiguration.AiConfig(id, name, url, accent, icon));
+            break;
         }
         saveProviders(current);
     }
@@ -178,6 +244,7 @@ public class CustomAiProvidersManager {
 
             if (iconFile.length() < 100) {
                 log.warn("Downloaded icon is too small (likely placeholder): {}", iconFile.length());
+                Files.deleteIfExists(iconFile.toPath());
                 return null;
             }
 

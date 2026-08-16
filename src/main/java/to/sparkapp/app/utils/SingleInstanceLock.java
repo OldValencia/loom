@@ -3,11 +3,15 @@ package to.sparkapp.app.utils;
 import lombok.extern.slf4j.Slf4j;
 import to.sparkapp.app.config.AppPaths;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -15,6 +19,10 @@ import java.util.concurrent.atomic.AtomicReference;
 public class SingleInstanceLock {
 
     private static final File PORT_FILE = new File(AppPaths.DATA_DIR, "lock.port");
+
+    /** Sent by the running instance so an unrelated process on the same port is not mistaken for one. */
+    private static final String HANDSHAKE = "SPARK-INSTANCE";
+    private static final int HANDSHAKE_TIMEOUT_MS = 700;
     private static ServerSocket serverSocket;
     private static final AtomicReference<Runnable> onActivate = new AtomicReference<>();
 
@@ -57,9 +65,10 @@ public class SingleInstanceLock {
     private static void startListenerThread() {
         var thread = new Thread(() -> {
             while (!serverSocket.isClosed()) {
-                try {
-                    var client = serverSocket.accept();
-                    client.close();
+                try (var client = serverSocket.accept()) {
+                    client.getOutputStream().write((HANDSHAKE + "\n").getBytes(StandardCharsets.UTF_8));
+                    client.getOutputStream().flush();
+
                     var callback = onActivate.get();
                     if (callback != null) {
                         javafx.application.Platform.runLater(callback);
@@ -73,7 +82,18 @@ public class SingleInstanceLock {
     }
 
     private static boolean signalExistingInstance(int port) {
-        try (var ignored = new Socket(InetAddress.getLoopbackAddress(), port)) {
+        try (var socket = new Socket()) {
+            socket.connect(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), HANDSHAKE_TIMEOUT_MS);
+            socket.setSoTimeout(HANDSHAKE_TIMEOUT_MS);
+
+            var reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+            var greeting = reader.readLine();
+
+            if (!HANDSHAKE.equals(greeting)) {
+                log.warn("Port {} is taken by another application, starting anyway", port);
+                return false;
+            }
+
             log.info("Another instance is running — signalled it to come to front");
             return true;
         } catch (IOException e) {

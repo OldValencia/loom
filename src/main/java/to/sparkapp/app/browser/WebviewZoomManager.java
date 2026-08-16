@@ -36,7 +36,7 @@ class WebviewZoomManager {
     private void changeZoom(boolean increase) {
         var step = 0.5;
         var newLevel = currentZoom + (increase ? step : -step);
-        newLevel = Math.max(-3.0, Math.min(4.0, newLevel));
+        newLevel = Math.clamp(newLevel, -3.0, 4.0);
         setZoomInternal(newLevel);
     }
 
@@ -52,7 +52,10 @@ class WebviewZoomManager {
     }
 
     public void applyZoomCss() {
-        var scale = Math.pow(1.2, currentZoom);
+        // With zoom switched off the page must render at 100 %, whatever level was
+        // stored back when the feature was still enabled.
+        var level = appPreferences.isZoomEnabled() ? currentZoom : 0.0;
+        var scale = Math.pow(1.2, level);
         var js = String.format("document.documentElement.style.zoom='%.4f';", scale);
         bridge.eval(js);
     }

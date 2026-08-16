@@ -6,8 +6,10 @@ import to.sparkapp.app.ui.dialogs.components.ProviderMainPanel;
 import to.sparkapp.app.ui.dialogs.components.ProviderTitleLabel;
 import to.sparkapp.app.ui.dialogs.components.ProvidersFormButtonsPanel;
 import to.sparkapp.app.utils.SystemUtils;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -38,7 +40,15 @@ public class ProviderEditDialog extends Stage {
         double width = 420;
         double height = SystemUtils.isWindows() ? 330 : 290;
 
-        var scene = new Scene(mainPanel, width, height, Color.TRANSPARENT);
+        // The stage is transparent, so the shadow needs padding around the panel to
+        // have somewhere to fall.
+        var pad = ProviderMainPanel.SHADOW_PADDING;
+        var root = new StackPane(mainPanel);
+        root.setPadding(new Insets(pad));
+        root.setStyle("-fx-background-color: transparent;");
+        root.setPickOnBounds(false);
+
+        var scene = new Scene(root, width + pad * 2, height + pad * 2, Color.TRANSPARENT);
         this.setScene(scene);
     }
 

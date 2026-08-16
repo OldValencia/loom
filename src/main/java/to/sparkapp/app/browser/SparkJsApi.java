@@ -1,6 +1,5 @@
 package to.sparkapp.app.browser;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import javafx.application.Platform;
@@ -13,14 +12,10 @@ import java.util.function.Consumer;
 @Slf4j
 class SparkJsApi {
 
-    private final Webview webview;
     private final Map<String, Consumer<JsonArray>> handlers = new ConcurrentHashMap<>();
-    private final Gson gson = new Gson();
 
     SparkJsApi(Webview webview) {
-        this.webview = webview;
-
-        this.webview.bind("sparkCall", (String rawArgs) -> {
+        webview.bind("sparkCall", (String rawArgs) -> {
             try {
                 if (rawArgs == null || rawArgs.isBlank()) {
                     return null;
@@ -53,20 +48,5 @@ class SparkJsApi {
 
     void on(String command, Consumer<JsonArray> action) {
         handlers.put(command, action);
-    }
-
-    void emitToJs(String eventName, Object data) {
-        if (webview == null) {
-            return;
-        }
-
-        var jsonPayload = gson.toJson(data);
-        var js = String.format(
-                "window.dispatchEvent(new CustomEvent('%s', { detail: %s }));",
-                eventName,
-                jsonPayload
-        );
-
-        webview.eval(js);
     }
 }

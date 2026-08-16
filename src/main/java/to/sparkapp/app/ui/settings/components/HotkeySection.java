@@ -4,7 +4,9 @@ import to.sparkapp.app.config.AppPreferences;
 import to.sparkapp.app.ui.Theme;
 import to.sparkapp.app.utils.GlobalHotkeyManager;
 import to.sparkapp.app.utils.SystemUtils;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -16,46 +18,62 @@ import javafx.scene.text.FontPosture;
 
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Row that records the global show/hide shortcut.
+ */
 public class HotkeySection extends VBox {
 
     public HotkeySection(AppPreferences appPreferences, GlobalHotkeyManager hotkeyManager) {
-        this.setAlignment(Pos.CENTER_LEFT);
-        this.setMaxWidth(Double.MAX_VALUE);
+        setMaxWidth(Double.MAX_VALUE);
+        setPadding(new Insets(11, 12, 11, 12));
+        setMinHeight(56);
+        setAlignment(Pos.CENTER_LEFT);
 
-        var mainRow = new HBox();
+        var mainRow = new HBox(16);
         mainRow.setAlignment(Pos.CENTER_LEFT);
         mainRow.setMaxWidth(Double.MAX_VALUE);
 
-        mainRow.getChildren().add(buildLabel("Toggle Window Shortcut"));
+        var available = hotkeyManager != null && hotkeyManager.isInitialized();
+        mainRow.getChildren().add(buildTextBlock(available));
 
         var spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         mainRow.getChildren().add(spacer);
 
-        if (hotkeyManager != null && hotkeyManager.isInitialized()) {
+        if (available) {
             var hotkeyRecordButton = buildHotkeyRecordButton(appPreferences, hotkeyManager);
             var resetBtn = buildResetHotkeyButton(hotkeyManager, hotkeyRecordButton);
 
-            HBox.setMargin(resetBtn, new javafx.geometry.Insets(0, 0, 0, 8));
-            mainRow.getChildren().addAll(hotkeyRecordButton, resetBtn);
-        } else {
-            mainRow.getChildren().add(buildLabel("Disabled"));
+            var controls = new HBox(8, hotkeyRecordButton, resetBtn);
+            controls.setAlignment(Pos.CENTER_RIGHT);
+            mainRow.getChildren().add(controls);
         }
 
         this.getChildren().add(mainRow);
 
-        if (SystemUtils.isMac() && (hotkeyManager == null || !hotkeyManager.isInitialized())) {
+        if (SystemUtils.isMac() && !available) {
             var verticalSpacer = new Region();
             verticalSpacer.setMinHeight(8);
             this.getChildren().addAll(verticalSpacer, buildPermissionWarning());
         }
+
+        SettingsRow.applyHoverHighlight(this);
     }
 
-    private Label buildLabel(String text) {
-        var label = new Label(text);
-        label.setFont(Theme.FONT_SETTINGS);
-        label.setTextFill(Theme.TEXT_PRIMARY);
-        return label;
+    private Node buildTextBlock(boolean available) {
+        var title = new Label("Toggle window shortcut");
+        title.setFont(Theme.FONT_SETTINGS_TITLE);
+        title.setTextFill(Theme.TEXT_PRIMARY);
+
+        var description = new Label(available
+                ? "Click the shortcut and press a new key combination"
+                : "Unavailable — the global key hook could not be registered");
+        description.setFont(Theme.FONT_SETTINGS_HINT);
+        description.setTextFill(Theme.TEXT_TERTIARY);
+
+        var textBlock = new VBox(3, title, description);
+        textBlock.setAlignment(Pos.CENTER_LEFT);
+        return textBlock;
     }
 
     private HBox buildPermissionWarning() {
@@ -94,10 +112,9 @@ public class HotkeySection extends VBox {
     }
 
     private ColorfulButton buildResetHotkeyButton(GlobalHotkeyManager hotkeyManager, AnimatedSettingsButton hotkeyRecordButton) {
-        var resetColor = Color.rgb(255, 94, 91);
         var buttonText = SystemUtils.isWindows() ? "X" : "✖";
 
-        return new ColorfulButton(buttonText, resetColor, () -> {
+        return new ColorfulButton(buttonText, Theme.DANGER, () -> {
             if (hotkeyManager != null) {
                 hotkeyManager.clearHotkey();
                 hotkeyRecordButton.setText("None");

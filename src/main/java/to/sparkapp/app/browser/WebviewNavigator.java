@@ -5,11 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import to.sparkapp.app.config.AiConfiguration;
 import to.sparkapp.app.utils.UrlUtils;
 
-import java.net.URI;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 @Slf4j
@@ -17,6 +17,8 @@ public class WebviewNavigator {
 
     private final WebviewManager bridge;
     private final WebviewZoomManager zoomManager;
+
+    private static final AtomicLong NAV_ID_SEQUENCE = new AtomicLong();
 
     private volatile long currentNavId = 0L;
     private volatile String currentUrl;
@@ -99,7 +101,7 @@ public class WebviewNavigator {
 
         if (onUrlChanged != null) onUrlChanged.accept(url);
 
-        if (configBaseUrl != null && !isAuthUrl(url) && !isSameHost(url, configBaseUrl)) {
+        if (configBaseUrl != null && !isAuthUrl(url) && !UrlUtils.isSameHost(url, configBaseUrl)) {
             log.info("WebviewNavigator: External URL detected [{}], opening in browser", url);
             UrlUtils.openLink(url);
             final long navId = currentNavId;
@@ -111,15 +113,23 @@ public class WebviewNavigator {
         }
     }
 
-    void setCurrentConfig(AiConfiguration.AiConfig config) {
-        log.info("WebviewNavigator: Changing config to: {}", config.url());
+    /**
+     * Switches to a provider, optionally opening a deeper page of it (for example the
+     * conversation the user had open when the app was last closed).
+     */
+    void setCurrentConfig(AiConfiguration.AiConfig config, String targetUrl) {
+        var url = targetUrl != null && UrlUtils.isSameHost(targetUrl, config.url())
+                ? targetUrl
+                : config.url();
+
+        log.info("WebviewNavigator: Changing config to: {}", url);
         this.configBaseUrl = config.url();
-        navigate(config.url());
+        navigate(url);
     }
 
     void navigate(String url) {
         this.currentUrl = url;
-        final long navId = System.currentTimeMillis();
+        final long navId = NAV_ID_SEQUENCE.incrementAndGet();
         this.currentNavId = navId;
 
         bridge.dispatch(() -> {
@@ -139,7 +149,7 @@ public class WebviewNavigator {
     void clearCookies() {
         log.info("WebviewNavigator: Clearing cookies...");
         final String returnUrl = currentUrl != null ? currentUrl : "about:blank";
-        final long navId = System.currentTimeMillis();
+        final long navId = NAV_ID_SEQUENCE.incrementAndGet();
         this.currentNavId = navId;
 
         bridge.dispatch(() -> {
@@ -170,29 +180,13 @@ public class WebviewNavigator {
             return;
         }
 
-        if (isAuthUrl(url) || (configBaseUrl != null && isSameHost(url, configBaseUrl))) {
+        if (isAuthUrl(url) || (configBaseUrl != null && UrlUtils.isSameHost(url, configBaseUrl))) {
             log.info("WebviewNavigator: Internal/Auth click detected, loading inside: {}", url);
             navigate(url);
         } else {
             log.info("WebviewNavigator: External click detected, opening in OS browser: {}", url);
             UrlUtils.openLink(url);
         }
-    }
-
-    private static boolean isSameHost(String url, String baseUrl) {
-        try {
-            var host1 = normalizeHost(URI.create(url).getHost());
-            var host2 = normalizeHost(URI.create(baseUrl).getHost());
-            if (host1 == null || host2 == null) return true;
-            return host1.equals(host2) || host1.endsWith("." + host2);
-        } catch (Exception e) {
-            return true;
-        }
-    }
-
-    private static String normalizeHost(String host) {
-        if (host == null) return null;
-        return host.startsWith("www.") ? host.substring(4) : host;
     }
 
     public static boolean isAuthUrl(String url) {

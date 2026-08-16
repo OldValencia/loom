@@ -60,6 +60,8 @@ public class DockItemNode extends HBox {
             var imageView = new ImageView(image);
             imageView.setFitWidth(AiDock.ICON_SIZE);
             imageView.setFitHeight(AiDock.ICON_SIZE);
+            imageView.setPreserveRatio(true);
+            imageView.setSmooth(true);
             this.getChildren().add(imageView);
         } else {
             var circle = new Circle(AiDock.ICON_SIZE / 2.0, Color.GRAY);
