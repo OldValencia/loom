@@ -21,6 +21,16 @@ public class Theme {
     public static final Color ACCENT = Color.rgb(100, 160, 255);
     public static final Color BORDER = Color.rgb(50, 50, 54);
 
+    /** Elevated surface used by the settings cards. */
+    public static final Color BG_CARD = Color.rgb(36, 36, 39);
+    /** Hairline between rows inside a card. */
+    public static final Color SEPARATOR = Color.rgb(48, 48, 52);
+    public static final Color BG_ROW_HOVER = Color.rgb(45, 45, 49);
+    public static final Color DANGER = Color.rgb(255, 94, 91);
+
+    public static final int CARD_RADIUS = 14;
+    public static final int ROW_RADIUS = 10;
+
     public static final Color BTN_HOVER_SETTINGS = Color.rgb(140, 140, 150);
     public static final Color BTN_HOVER_CLOSE = Color.rgb(255, 80, 80);
     public static final Color BTN_RING = Color.rgb(80, 80, 90);
@@ -33,7 +43,9 @@ public class Theme {
     public static final Font FONT_RIGHT_TOP_BAR_AREA = Font.font("SansSerif", 17);
     public static final Font FONT_SELECTOR = Font.font(FONT_NAME, 14);
     public static final Font FONT_SETTINGS = Font.font(FONT_NAME, 15);
-    public static final Font FONT_SETTINGS_SECTION = Font.font(FONT_NAME, FontWeight.BOLD, 13);
+    public static final Font FONT_SETTINGS_SECTION = Font.font(FONT_NAME, FontWeight.BOLD, 12);
+    public static final Font FONT_SETTINGS_TITLE = Font.font(FONT_NAME, FontWeight.MEDIUM, 14.5);
+    public static final Font FONT_SETTINGS_HINT = Font.font(FONT_NAME, 11.5);
 
     public static String toHex(Color color) {
         return String.format("#%02X%02X%02X",
@@ -65,7 +77,7 @@ public class Theme {
     }
 
     private static double clamp(double v) {
-        return Math.max(0.0, Math.min(1.0, v));
+        return Math.clamp(v, 0.0, 1.0);
     }
 
     private static String resolveFontName() {

@@ -3,9 +3,9 @@ package to.sparkapp.app.ui.settings.components;
 import javafx.stage.Stage;
 import to.sparkapp.app.config.AiConfiguration;
 import to.sparkapp.app.config.CustomAiProvidersManager;
+import to.sparkapp.app.ui.Theme;
 import to.sparkapp.app.utils.FrameUtils;
 import javafx.application.Platform;
-import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.layout.VBox;
@@ -15,32 +15,40 @@ import java.util.function.Consumer;
 
 public class ProvidersManagementPanel extends VBox {
 
+    private static final int HEADER_GAP = 8;
+
     private final CustomAiProvidersManager providersManager;
     private final Consumer<Void> onProvidersChanged;
-    private final VBox listContainer;
+    private final SettingsCard listCard;
 
-    public ProvidersManagementPanel(CustomAiProvidersManager providersManager, Consumer<Void> onProvidersChanged) {
+    public ProvidersManagementPanel(CustomAiProvidersManager providersManager,
+                                    Consumer<Void> onProvidersChanged,
+                                    Runnable onResetToDefaults) {
         this.providersManager = providersManager;
         this.onProvidersChanged = onProvidersChanged;
 
-        this.setPadding(new Insets(0, 0, 12, 0));
-        this.setSpacing(8); // Gap between header and list
+        this.setSpacing(HEADER_GAP);
+        this.setMaxWidth(Double.MAX_VALUE);
 
-        this.getChildren().add(new ProvidersListHeader(this::openAddDialog));
+        var resetButton = new ProvidersListTextButton("Reset", Theme.TEXT_TERTIARY, Theme.DANGER,
+                onResetToDefaults);
+        var addButton = new ProvidersListTextButton("+ Add", Theme.ACCENT, Theme.ACCENT,
+                this::openAddDialog);
 
-        listContainer = new VBox();
-        listContainer.setSpacing(4);
-        this.getChildren().add(listContainer);
+        this.getChildren().add(new SettingsSection("AI Providers", resetButton, addButton));
+
+        listCard = new SettingsCard();
+        this.getChildren().add(listCard);
 
         refreshProvidersList();
     }
 
     private void refreshProvidersList() {
-        listContainer.getChildren().clear();
+        listCard.clearRows();
         var allProviders = providersManager.loadProviders();
 
         if (allProviders.isEmpty()) {
-            listContainer.getChildren().add(new ProvidersEmptyListLabel());
+            listCard.addRow(new ProvidersEmptyListLabel());
         } else {
             fillProviderList(allProviders);
         }
@@ -48,12 +56,11 @@ public class ProvidersManagementPanel extends VBox {
 
     private void fillProviderList(List<AiConfiguration.AiConfig> allProviders) {
         for (var provider : allProviders) {
-            var itemPanel = new ProviderListItem(
+            listCard.addRow(new ProviderListItem(
                     provider,
                     () -> openEditDialog(provider),
                     () -> confirmAndDelete(provider)
-            );
-            listContainer.getChildren().add(itemPanel);
+            ));
         }
     }
 

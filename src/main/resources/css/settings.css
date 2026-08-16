@@ -1,0 +1,44 @@
+/* Minimal dark scrollbar for the settings sheet. */
+
+.settings-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.settings-scroll > .corner {
+    -fx-background-color: transparent;
+}
+
+.settings-scroll .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-padding: 4 3 4 0;
+    -fx-pref-width: 11;
+}
+
+.settings-scroll .scroll-bar:vertical > .track,
+.settings-scroll .scroll-bar:vertical > .track-background {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.settings-scroll .scroll-bar:vertical > .thumb {
+    -fx-background-color: #43434a;
+    -fx-background-insets: 0;
+    -fx-background-radius: 4;
+}
+
+.settings-scroll .scroll-bar:vertical > .thumb:hover,
+.settings-scroll .scroll-bar:vertical > .thumb:pressed {
+    -fx-background-color: #5a5a63;
+}
+
+.settings-scroll .scroll-bar > .increment-button,
+.settings-scroll .scroll-bar > .decrement-button {
+    -fx-pref-height: 0;
+    -fx-padding: 0;
+}
+
+.settings-scroll .scroll-bar > .increment-button > .increment-arrow,
+.settings-scroll .scroll-bar > .decrement-button > .decrement-arrow {
+    -fx-shape: null;
+    -fx-padding: 0;
+}

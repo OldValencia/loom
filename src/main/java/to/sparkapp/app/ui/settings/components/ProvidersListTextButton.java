@@ -6,9 +6,12 @@ import javafx.scene.control.Label;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 
+/**
+ * Borderless text action used in the providers list ("Edit", "Delete", "+ Add").
+ */
 class ProvidersListTextButton extends Label {
 
-    ProvidersListTextButton(String text, Color defaultColor, Runnable action) {
+    ProvidersListTextButton(String text, Color defaultColor, Color hoverColor, Runnable action) {
         super(text);
         this.setFont(Font.font(Theme.FONT_SETTINGS.getFamily(), 12));
         this.setTextFill(defaultColor);
@@ -20,12 +23,7 @@ class ProvidersListTextButton extends Label {
             }
         });
 
-        this.setOnMouseEntered(e -> {
-            if (defaultColor.equals(Theme.TEXT_SECONDARY)) {
-                this.setTextFill(Theme.ACCENT);
-            }
-        });
-
+        this.setOnMouseEntered(e -> this.setTextFill(hoverColor));
         this.setOnMouseExited(e -> this.setTextFill(defaultColor));
     }
 }

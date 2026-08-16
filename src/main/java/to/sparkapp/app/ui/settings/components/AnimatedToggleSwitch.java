@@ -1,11 +1,14 @@
 package to.sparkapp.app.ui.settings.components;
 
 import to.sparkapp.app.ui.Theme;
+import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.scene.Cursor;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
@@ -15,9 +18,11 @@ import java.util.function.Consumer;
 
 public class AnimatedToggleSwitch extends Pane {
 
-    private static final double WIDTH = 48;
-    private static final double HEIGHT = 28;
-    private static final double THUMB_RADIUS = 11;
+    private static final double WIDTH = 44;
+    private static final double HEIGHT = 26;
+    private static final double THUMB_RADIUS = 10;
+    private static final double INSET = 3;
+    private static final Duration ANIM = Duration.millis(180);
 
     private boolean enabled;
     private final Timeline timeline;
@@ -40,10 +45,10 @@ public class AnimatedToggleSwitch extends Pane {
 
         var thumb = new Circle(THUMB_RADIUS, Theme.TOGGLE_THUMB);
         thumb.setCenterY(HEIGHT / 2.0);
+        thumb.setEffect(new DropShadow(4, 0, 1, Color.rgb(0, 0, 0, 0.35)));
 
-        // Calculate min and max X positions for the thumb
-        var minX = 2.0 + THUMB_RADIUS;
-        var maxX = WIDTH - 2.0 - THUMB_RADIUS;
+        var minX = INSET + THUMB_RADIUS;
+        var maxX = WIDTH - INSET - THUMB_RADIUS;
         thumb.setCenterX(initialState ? maxX : minX);
 
         this.getChildren().addAll(bgRect, thumb);
@@ -63,9 +68,9 @@ public class AnimatedToggleSwitch extends Pane {
         var targetX = enabled ? maxX : minX;
 
         timeline.getKeyFrames().add(
-                new KeyFrame(Duration.millis(200),
-                        new KeyValue(bgRect.fillProperty(), targetColor),
-                        new KeyValue(thumb.centerXProperty(), targetX)
+                new KeyFrame(ANIM,
+                        new KeyValue(bgRect.fillProperty(), targetColor, Interpolator.EASE_BOTH),
+                        new KeyValue(thumb.centerXProperty(), targetX, Interpolator.EASE_BOTH)
                 )
         );
 

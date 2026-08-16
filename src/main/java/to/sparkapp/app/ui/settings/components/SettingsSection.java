@@ -1,13 +1,37 @@
 package to.sparkapp.app.ui.settings.components;
 
-import to.sparkapp.app.ui.Theme;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import to.sparkapp.app.ui.Theme;
 
-public class SettingsSection extends Label {
+/**
+ * Caption above a {@link SettingsCard}, optionally with actions aligned to its right.
+ */
+public class SettingsSection extends HBox {
 
-    public SettingsSection(String title) {
-        super(title.toUpperCase());
-        this.setFont(Theme.FONT_SETTINGS_SECTION);
-        this.setTextFill(Theme.TEXT_TERTIARY);
+    private static final Insets PADDING = new Insets(0, 4, 0, 4);
+
+    public SettingsSection(String title, Node... actions) {
+        setAlignment(Pos.CENTER_LEFT);
+        setSpacing(12);
+        setPadding(PADDING);
+        setMinHeight(22);
+
+        var titleLabel = new Label(title.toUpperCase());
+        titleLabel.setFont(Theme.FONT_SETTINGS_SECTION);
+        titleLabel.setTextFill(Theme.TEXT_TERTIARY);
+        getChildren().add(titleLabel);
+
+        if (actions.length > 0) {
+            var spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+            getChildren().add(spacer);
+            getChildren().addAll(actions);
+        }
     }
 }

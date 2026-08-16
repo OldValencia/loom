@@ -8,6 +8,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
+import to.sparkapp.app.ui.Theme;
 import to.sparkapp.app.ui.settings.SettingsPanel;
 
 public class SettingsWindow {
@@ -99,7 +100,12 @@ public class SettingsWindow {
         });
 
         var scrollPane = new ScrollPane(settingsPanel);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        scrollPane.getStyleClass().add("settings-scroll");
+        // Painted opaque: the content is laid out inside the viewport, which is
+        // narrower than the window by the width of the scrollbar - without this the
+        // strip under the scrollbar would let the page behind show through.
+        scrollPane.setStyle("-fx-background: %s; -fx-background-color: %s;"
+                .formatted(Theme.toHex(Theme.BG_BAR), Theme.toHex(Theme.BG_BAR)));
         scrollPane.setFitToWidth(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
@@ -108,6 +114,10 @@ public class SettingsWindow {
         scrollPane.setClip(contentClip);
 
         var scene = new Scene(scrollPane, Color.TRANSPARENT);
+        var stylesheet = getClass().getResource("/css/settings.css");
+        if (stylesheet != null) {
+            scene.getStylesheets().add(stylesheet.toExternalForm());
+        }
         window.setScene(scene);
 
         animTimer = new AnimationTimer() {

@@ -19,9 +19,8 @@ import java.util.function.Consumer;
 @Slf4j
 public class SettingsPanel extends VBox {
 
-    private static final int SECTION_GAP = 20;
-    private static final int ROW_GAP = 8;
-    private static final int SUB_SECTION_GAP = 12;
+    private static final int SECTION_GAP = 22;
+    private static final int HEADER_GAP = 8;
 
     @Setter
     private Consumer<Boolean> onRememberLastAiChanged;
@@ -60,8 +59,9 @@ public class SettingsPanel extends VBox {
 
     private void initLayout() {
         this.setStyle("-fx-background-color: " + Theme.toHex(Theme.BG_BAR) + ";");
-        this.setPadding(new Insets(20, 24, 20, 24));
+        this.setPadding(new Insets(20, 22, 18, 22));
         this.setMaxWidth(820);
+        this.setFillWidth(true);
     }
 
     private void buildUI() {
@@ -72,28 +72,18 @@ public class SettingsPanel extends VBox {
         addStrut(SECTION_GAP);
 
         buildGeneralSection();
-        addStrut(16);
+        addStrut(SECTION_GAP);
 
         if (hotkeyManager != null) {
             buildHotkeySection();
-            addStrut(16);
+            addStrut(SECTION_GAP);
         }
 
         buildBrowserSection();
-        addStrut(SUB_SECTION_GAP);
-
-        var clearCookiesBtn = new ClearCookiesButton();
-        clearCookiesBtn.setOnClearCookies(() -> {
-            if (onClearCookies != null) {
-                onClearCookies.run();
-            }
-        });
-        this.getChildren().add(clearCookiesBtn);
-
-        addStrut(SECTION_GAP);
+        addStrut(18);
 
         this.getChildren().add(new GithubLinkPanel());
-        addStrut(5);
+        addStrut(4);
     }
 
     private void buildProvidersSection() {
@@ -104,75 +94,92 @@ public class SettingsPanel extends VBox {
                     if (onProvidersChanged != null) {
                         onProvidersChanged.run();
                     }
-                }
+                },
+                new ProvidersResetHandler(aiConfiguration, onProvidersChanged)
         ));
-        this.getChildren().add(new ResetProvidersPanel(aiConfiguration, onProvidersChanged));
     }
 
     private void buildGeneralSection() {
-        addSectionHeader("General");
+        var card = new SettingsCard();
 
-        addToggleRow("Remember last used AI",
+        card.addRow(toggleRow("Remember last used AI",
+                "Reopen on the page you left",
                 appPreferences.isRememberLastAi(),
                 val -> {
                     if (onRememberLastAiChanged != null) {
                         onRememberLastAiChanged.accept(val);
                     }
-                });
+                }));
 
-        addToggleRow("Run on System Startup",
+        card.addRow(toggleRow("Run on system startup",
+                "Launch Spark when you sign in",
                 appPreferences.isAutoStartEnabled(),
-                appPreferences::setAutoStartEnabled);
+                appPreferences::setAutoStartEnabled));
 
-        addToggleRow("Run the application in the background",
+        card.addRow(toggleRow("Start in the background",
+                "Stay in the tray until the hotkey is pressed",
                 appPreferences.isStartApplicationHiddenEnabled(),
-                appPreferences::setStartApplicationHiddenEnabled);
+                appPreferences::setStartApplicationHiddenEnabled));
 
-        addToggleRow("Check for Updates automatically",
+        card.addRow(toggleRow("Check for updates automatically",
+                "Look for a new release on startup",
                 appPreferences.isCheckUpdatesOnStartupEnabled(),
                 val -> {
                     appPreferences.setCheckUpdatesOnStartup(val);
                     if (onAutoUpdateChanged != null) {
                         onAutoUpdateChanged.accept(val);
                     }
-                });
+                }));
+
+        addSection("General", card);
     }
 
     private void buildHotkeySection() {
-        addSectionHeader("Global Hotkey");
-        this.getChildren().add(new HotkeySection(appPreferences, hotkeyManager));
+        var card = new SettingsCard();
+        card.addRow(new HotkeySection(appPreferences, hotkeyManager));
+        addSection("Global Hotkey", card);
     }
 
     private void buildBrowserSection() {
-        addSectionHeader("Browser");
+        var card = new SettingsCard();
 
-        addToggleRow("Zoom enabled", appPreferences.isZoomEnabled(), val -> {
-            appPreferences.setZoomEnabled(val);
-            if (onZoomEnabledChanged != null) {
-                onZoomEnabledChanged.accept(val);
+        card.addRow(toggleRow("Zoom",
+                "Ctrl + wheel or Ctrl +/− inside the page",
+                appPreferences.isZoomEnabled(),
+                val -> {
+                    appPreferences.setZoomEnabled(val);
+                    if (onZoomEnabledChanged != null) {
+                        onZoomEnabledChanged.accept(val);
+                    }
+                }));
+
+        card.addRow(toggleRow("Request dark mode from websites",
+                "Takes effect after a restart",
+                appPreferences.isDarkModeEnabled(),
+                appPreferences::setDarkModeEnabled));
+
+        var clearCookiesBtn = new AnimatedSettingsButton("Clear cookies", () -> {
+            if (onClearCookies != null) {
+                onClearCookies.run();
             }
         });
+        card.addRow(new SettingsRow("Cookies",
+                "Sign out of every provider and reset sessions",
+                clearCookiesBtn));
 
-        addToggleRow("Try to request dark mode from websites (restart required)",
-                appPreferences.isDarkModeEnabled(),
-                appPreferences::setDarkModeEnabled);
+        addSection("Browser", card);
     }
 
-    private void addSectionHeader(String title) {
+    private void addSection(String title, Node card) {
         this.getChildren().add(new SettingsSection(title));
-        addStrut(10);
+        addStrut(HEADER_GAP);
+        this.getChildren().add(card);
     }
 
-    private void addToggleRow(String labelText, boolean initialValue, Consumer<Boolean> onChange) {
+    private SettingsRow toggleRow(String title, String description, boolean initialValue, Consumer<Boolean> onChange) {
         var toggle = new AnimatedToggleSwitch(initialValue);
         toggle.setOnChange(onChange);
-
-        addSettingRow(labelText, toggle);
-    }
-
-    private void addSettingRow(String labelText, Node control) {
-        this.getChildren().add(new SettingsRow(labelText, control));
-        addStrut(ROW_GAP);
+        return new SettingsRow(title, description, toggle);
     }
 
     private void addStrut(double height) {

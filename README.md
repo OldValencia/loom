@@ -45,6 +45,9 @@ Access your favorite AI services in one place. Pre-configured with:
 ### Settings & Hotkeys
 ![Spark Settings 2](docs/application_settings_2.png)
 
+### Adding a Provider
+![Spark Add Provider](docs/application_provider_dialog.png)
+
 ## Installation
 
 ### Windows
