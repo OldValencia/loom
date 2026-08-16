@@ -38,6 +38,8 @@ public class AiDock extends StackPane {
     public static final int ICON_SIZE = 24;
 
     static final int ITEM_HEIGHT = 32;
+    /** Item plus the 8 px breathing room above and below it. */
+    static final int DOCK_HEIGHT = ITEM_HEIGHT + 16;
     static final int ITEM_MARGIN = 6;
     static final int PAD = 12;
     static final int GAP = 8;
@@ -73,6 +75,9 @@ public class AiDock extends StackPane {
 
         this.setAlignment(Pos.CENTER_LEFT);
         this.setMaxWidth(MAX_DOCK_WIDTH);
+        this.setMinHeight(DOCK_HEIGHT);
+        this.setPrefHeight(DOCK_HEIGHT);
+        this.setMaxHeight(DOCK_HEIGHT);
         this.setStyle("-fx-background-color: transparent;");
 
         scrollPane = new ScrollPane();
@@ -82,6 +87,9 @@ public class AiDock extends StackPane {
         scrollPane.setFitToHeight(true);
         scrollPane.setPannable(false);
         scrollPane.setMaxWidth(MAX_DOCK_WIDTH);
+        scrollPane.setMinHeight(DOCK_HEIGHT);
+        scrollPane.setPrefHeight(DOCK_HEIGHT);
+        scrollPane.setMaxHeight(DOCK_HEIGHT);
 
         dockContainer = new HBox();
         dockContainer.setSpacing(ITEM_MARGIN);

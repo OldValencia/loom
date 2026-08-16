@@ -28,6 +28,12 @@ public class AiDockScrollArrow extends StackPane {
         bg.setArcWidth(8);
         bg.setArcHeight(8);
         bg.setFill(Theme.BG_HOVER);
+        bg.setWidth(ARROW_WIDTH);
+        // Unmanaged on purpose: its height is driven by this pane's height, so letting
+        // it count towards the pane's preferred size would make the two grow each other.
+        // On a fractionally scaled monitor every layout pass rounds the size up to the
+        // next physical pixel, and the top bar creeps taller with every hover animation.
+        bg.setManaged(false);
 
         var tri = new Polygon();
         if (isLeft) {
@@ -39,10 +45,7 @@ public class AiDockScrollArrow extends StackPane {
 
         this.getChildren().addAll(bg, tri);
 
-        this.heightProperty().addListener((obs, old, h) -> {
-            bg.setWidth(ARROW_WIDTH);
-            bg.setHeight(h.doubleValue());
-        });
+        this.heightProperty().addListener((obs, old, h) -> bg.setHeight(h.doubleValue()));
 
         this.setOnMouseEntered(e -> tri.setFill(Theme.TEXT_PRIMARY));
         this.setOnMouseExited(e -> tri.setFill(Theme.TEXT_SECONDARY));
