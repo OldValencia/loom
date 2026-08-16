@@ -24,7 +24,6 @@ public class WebviewManager {
     private final AtomicBoolean ready = new AtomicBoolean(false);
     private final AtomicBoolean disposed = new AtomicBoolean(false);
     private final AtomicBoolean isStarting = new AtomicBoolean(false);
-    private volatile boolean isFirstStart = true;
     private volatile boolean isHibernated = false;
 
     private volatile int nativeX;
@@ -137,10 +136,11 @@ public class WebviewManager {
             try {
                 ready.set(false);
 
-                var firstStart = isFirstStart;
-                isFirstStart = false;
-
-                webview = firstStart ? new Webview(false, parentHandle) : new Webview(false);
+                // Always let the library create its own top-level window and reparent it
+                // afterwards: the embedded (parent handle) path of the native library
+                // reports the host window as its own window, so every later setBounds /
+                // setVisible call would move or hide the whole application window.
+                webview = new Webview(false);
                 this.nativeHandle = webview.getNativeWindowPointer();
 
                 if (nativeHandle != 0) {
@@ -159,9 +159,6 @@ public class WebviewManager {
 
                 setupJsApi();
                 webview.setInitScript(INIT_SCRIPTS);
-                if (nativeW > 0 && nativeH > 0) {
-                    webview.setSize(nativeW, nativeH);
-                }
 
                 var urlToLoad = initialUrl != null ? initialUrl : "about:blank";
                 webview.loadURL(urlToLoad);
@@ -177,9 +174,6 @@ public class WebviewManager {
                             NativeWindowUtils.unparent(nativeHandle);
                         } else if (parentHandle != 0) {
                             NativeWindowUtils.setParent(nativeHandle, parentHandle);
-                            if (nativeW > 0 && nativeH > 0) {
-                                webview.setSize(nativeW, nativeH);
-                            }
                             NativeWindowUtils.setBounds(nativeHandle, nativeX, nativeY, nativeW, nativeH);
                             NativeWindowUtils.setVisible(nativeHandle, true);
                         }
@@ -309,14 +303,13 @@ public class WebviewManager {
             return;
         }
 
-        dispatch(() -> {
-            if (webview != null) {
-                webview.setSize(width, height);
-            }
-        });
-
         if (nativeHandle != 0 && !isHibernated) {
-            if (parentHandle != 0) {
+            // Bounds are physical pixels, so they are applied with SetWindowPos rather
+            // than webview_set_size(): the native call treats its arguments as 96 DPI
+            // units and multiplies them by the monitor scale, which would blow the
+            // window up by the scale factor on a HiDPI monitor. Resizing the window
+            // makes the library lay out its widget through WM_SIZE anyway.
+            if (parentHandle != 0 && !NativeWindowUtils.isChildOf(nativeHandle, parentHandle)) {
                 NativeWindowUtils.setParent(nativeHandle, parentHandle);
             }
             NativeWindowUtils.setBounds(nativeHandle, x, y, width, height);
@@ -350,13 +343,6 @@ public class WebviewManager {
             startWebviewThread(navigator.getCurrentUrl());
         } else {
             NativeWindowUtils.setParent(nativeHandle, this.parentHandle);
-            if (nativeW > 0 && nativeH > 0) {
-                dispatch(() -> {
-                    if (webview != null) {
-                        webview.setSize(nativeW, nativeH);
-                    }
-                });
-            }
             NativeWindowUtils.setBounds(nativeHandle, nativeX, nativeY, nativeW, nativeH);
             NativeWindowUtils.setVisible(nativeHandle, true);
         }

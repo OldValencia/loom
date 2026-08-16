@@ -1,6 +1,9 @@
 package to.sparkapp.app.ui.webview;
 
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
 import javafx.animation.PauseTransition;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.layout.Region;
@@ -36,6 +39,27 @@ public class FxWebViewPane extends StackPane {
     private final WebViewLoadingOverlay overlay;
 
     private boolean bridgeStarted = false;
+    private boolean windowListenersAttached = false;
+
+    /**
+     * HWND of the hosting JavaFX window. Cached because resolving it renames the
+     * stage temporarily, which is too expensive to redo on every layout pass.
+     */
+    private long parentHandle = 0L;
+
+    /** Last host geometry seen by {@link #checkHostGeometry()}, in physical pixels. */
+    private int lastHostClientWidth = -1;
+    private int lastHostClientHeight = -1;
+    private int lastHostDpi = -1;
+
+    /**
+     * JavaFX does not reliably notify us when the host window is dragged to a
+     * monitor with a different scale factor, so the host geometry is polled as a
+     * safety net. Without this the native webview keeps the physical size it had
+     * on the previous monitor and ends up as a small rectangle inside the window.
+     */
+    private final Timeline hostGeometryWatchdog = new Timeline(
+            new KeyFrame(Duration.millis(400), e -> checkHostGeometry()));
 
     @Setter
     private Consumer<Double> zoomCallback;
@@ -54,6 +78,8 @@ public class FxWebViewPane extends StackPane {
 
         overlay = new WebViewLoadingOverlay();
         getChildren().add(overlay);
+
+        hostGeometryWatchdog.setCycleCount(Animation.INDEFINITE);
 
         setupBridgeCallbacks();
         setupLayoutListeners();
@@ -99,36 +125,103 @@ public class FxWebViewPane extends StackPane {
             if (newScene == null) {
                 return;
             }
-            newScene.windowProperty().addListener((wObs, oldWin, newWin) -> {
-                if (newWin == null) {
-                    return;
-                }
+            newScene.windowProperty().addListener((wObs, oldWin, newWin) -> attachWindowListeners(newWin));
 
-                newWin.showingProperty().addListener((o, old, isShowing) -> {
-                    if (isShowing) {
-                        if (!bridgeStarted) {
-                            startBridgeIfReady();
-                        } else {
-                            syncBounds();
-                            Platform.runLater(this::syncBounds);
-                        }
-                    } else if (bridgeStarted) {
-                        bridge.hibernate();
-                    }
-                });
-
-                newWin.xProperty().addListener((o, old, n) -> syncBounds());
-                newWin.yProperty().addListener((o, old, n) -> syncBounds());
-                newWin.widthProperty().addListener((o, old, n) -> syncBounds());
-                newWin.heightProperty().addListener((o, old, n) -> syncBounds());
-                newWin.outputScaleXProperty().addListener((o, old, n) -> syncBounds());
-                newWin.outputScaleYProperty().addListener((o, old, n) -> syncBounds());
-            });
+            // The scene usually already belongs to a stage by the time this pane is
+            // added to it, in which case windowProperty never fires again.
+            attachWindowListeners(newScene.getWindow());
 
             if (newScene.getWindow() != null && newScene.getWindow().isShowing() && !bridgeStarted) {
                 startBridgeIfReady();
             }
         });
+    }
+
+    private void attachWindowListeners(javafx.stage.Window window) {
+        if (window == null || windowListenersAttached) {
+            return;
+        }
+        windowListenersAttached = true;
+
+        window.showingProperty().addListener((o, old, isShowing) -> {
+            if (isShowing) {
+                if (!bridgeStarted) {
+                    startBridgeIfReady();
+                } else {
+                    resyncBounds();
+                }
+                startHostGeometryWatchdog();
+            } else {
+                hostGeometryWatchdog.stop();
+                if (bridgeStarted) {
+                    bridge.hibernate();
+                }
+            }
+        });
+
+        window.xProperty().addListener((o, old, n) -> syncBounds());
+        window.yProperty().addListener((o, old, n) -> syncBounds());
+        window.widthProperty().addListener((o, old, n) -> syncBounds());
+        window.heightProperty().addListener((o, old, n) -> syncBounds());
+        window.outputScaleXProperty().addListener((o, old, n) -> resyncBounds());
+        window.outputScaleYProperty().addListener((o, old, n) -> resyncBounds());
+        window.renderScaleXProperty().addListener((o, old, n) -> resyncBounds());
+        window.renderScaleYProperty().addListener((o, old, n) -> resyncBounds());
+
+        if (window.isShowing()) {
+            startHostGeometryWatchdog();
+        }
+    }
+
+    private void startHostGeometryWatchdog() {
+        if (SystemUtils.isWindows() && hostGeometryWatchdog.getStatus() != Animation.Status.RUNNING) {
+            hostGeometryWatchdog.play();
+        }
+    }
+
+    /**
+     * Re-applies the native bounds now and again shortly after: on a DPI change the
+     * host window is resized by the platform after the scale properties change, so a
+     * single immediate pass would compute the rectangle against a stale window size.
+     */
+    private void resyncBounds() {
+        syncBounds();
+        Platform.runLater(this::syncBounds);
+        for (int delayMs : new int[]{80, 250, 600}) {
+            var delay = new PauseTransition(Duration.millis(delayMs));
+            delay.setOnFinished(e -> syncBounds());
+            delay.play();
+        }
+    }
+
+    /**
+     * Detects host window resizes and monitor scale changes that JavaFX did not
+     * report, and re-syncs the native webview when they happen.
+     */
+    private void checkHostGeometry() {
+        if (!bridgeStarted || parentHandle == 0) {
+            return;
+        }
+        var window = getScene() != null ? getScene().getWindow() : null;
+        if (window == null || !window.isShowing()) {
+            return;
+        }
+
+        int[] client = NativeWindowUtils.getClientSize(parentHandle);
+        if (client == null) {
+            return;
+        }
+        int dpi = NativeWindowUtils.getWindowDpi(parentHandle);
+
+        if (client[0] != lastHostClientWidth || client[1] != lastHostClientHeight || dpi != lastHostDpi) {
+            lastHostClientWidth = client[0];
+            lastHostClientHeight = client[1];
+            lastHostDpi = dpi;
+
+            applyCss();
+            layout();
+            syncBounds();
+        }
     }
 
     /**
@@ -146,6 +239,7 @@ public class FxWebViewPane extends StackPane {
      * Belt-and-suspenders alongside the showingProperty listener.
      */
     public void onWindowHidden() {
+        hostGeometryWatchdog.stop();
         bridge.hibernate();
     }
 
@@ -162,17 +256,18 @@ public class FxWebViewPane extends StackPane {
             return;
         }
 
-        long parentHandle = resolveParentHandle(window);
-        if (parentHandle == 0L && SystemUtils.isWindows()) {
+        long handle = resolveParentHandle(window);
+        if (handle == 0L && SystemUtils.isWindows()) {
             scheduleRetryStart();
             return;
         }
+        this.parentHandle = handle;
 
         int[] initialBounds = calculateCurrentBounds();
         bridgeStarted = true;
-        bridge.init(startUrl, parentHandle, initialBounds[0], initialBounds[1], initialBounds[2], initialBounds[3]);
-        syncBounds();
-        Platform.runLater(this::syncBounds);
+        bridge.init(startUrl, handle, initialBounds[0], initialBounds[1], initialBounds[2], initialBounds[3]);
+        resyncBounds();
+        startHostGeometryWatchdog();
     }
 
     private long resolveParentHandle(javafx.stage.Window window) {
@@ -201,20 +296,21 @@ public class FxWebViewPane extends StackPane {
         if (window == null || !window.isShowing()) {
             return;
         }
-        long parentHandle = resolveParentHandle(window);
-        if (parentHandle == 0L && SystemUtils.isWindows()) {
+        long handle = resolveParentHandle(window);
+        if (handle == 0L && SystemUtils.isWindows()) {
             var t = new PauseTransition(Duration.millis(50));
             t.setOnFinished(e -> doWakeup());
             t.play();
             return;
         }
+        this.parentHandle = handle;
 
-        log.info("FxWebViewPane: Waking up bridge with parentHandle=0x{}", Long.toHexString(parentHandle));
-        bridge.wakeup(parentHandle);
+        log.info("FxWebViewPane: Waking up bridge with parentHandle=0x{}", Long.toHexString(handle));
+        bridge.wakeup(handle);
         getScene().getRoot().applyCss();
         getScene().getRoot().layout();
-        syncBounds();
-        Platform.runLater(this::syncBounds);
+        resyncBounds();
+        startHostGeometryWatchdog();
     }
 
     void syncBounds() {
@@ -241,12 +337,20 @@ public class FxWebViewPane extends StackPane {
 
         int x, y, w, h;
         if (SystemUtils.isWindows()) {
-            var sx = window.getOutputScaleX();
-            var sy = window.getOutputScaleY();
+            var scale = resolveHostScale(window);
+            var sx = scale[0];
+            var sy = scale[1];
             x = (int) Math.round(bounds.getMinX() * sx);
             y = (int) Math.round(bounds.getMinY() * sy);
             w = (int) Math.round(bounds.getWidth() * sx);
             h = (int) Math.round(bounds.getHeight() * sy);
+
+            // Never let the webview stick out of the host window's client area.
+            int[] client = NativeWindowUtils.getClientSize(parentHandle);
+            if (client != null && client[0] > 0 && client[1] > 0) {
+                w = Math.min(w, client[0] - x);
+                h = Math.min(h, client[1] - y);
+            }
         } else {
             x = (int) Math.round(bounds.getMinX() + scene.getX());
             y = (int) Math.round(bounds.getMinY() + scene.getY());
@@ -254,6 +358,36 @@ public class FxWebViewPane extends StackPane {
             h = (int) Math.round(bounds.getHeight());
         }
         return new int[]{x, y, w, h};
+    }
+
+    /**
+     * Scale factor between JavaFX logical units and physical pixels.
+     *
+     * <p>{@code outputScaleX/Y} is used when it matches reality, but it can lag behind
+     * (or never update at all) when the window is dragged onto a monitor with a
+     * different scale factor, so the host window's real client size wins when the
+     * two disagree.
+     */
+    private double[] resolveHostScale(javafx.stage.Window window) {
+        var sx = window.getOutputScaleX();
+        var sy = window.getOutputScaleY();
+
+        int[] client = NativeWindowUtils.getClientSize(parentHandle);
+        if (client == null || window.getWidth() <= 0 || window.getHeight() <= 0) {
+            return new double[]{sx, sy};
+        }
+
+        var realX = client[0] / window.getWidth();
+        var realY = client[1] / window.getHeight();
+        if (isSaneScale(realX) && isSaneScale(realY)
+                && (Math.abs(realX - sx) > 0.01 || Math.abs(realY - sy) > 0.01)) {
+            return new double[]{realX, realY};
+        }
+        return new double[]{sx, sy};
+    }
+
+    private static boolean isSaneScale(double scale) {
+        return scale >= 0.5 && scale <= 8.0;
     }
 
     /**
@@ -287,6 +421,7 @@ public class FxWebViewPane extends StackPane {
     }
 
     public void shutdown(Runnable onComplete) {
+        hostGeometryWatchdog.stop();
         bridge.shutdown(() -> Platform.runLater(onComplete));
     }
 }

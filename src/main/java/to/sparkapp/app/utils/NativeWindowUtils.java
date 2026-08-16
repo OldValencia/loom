@@ -13,6 +13,19 @@ import lombok.extern.slf4j.Slf4j;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class NativeWindowUtils {
 
+    /**
+     * GetDpiForWindow is not exposed by JNA's User32 mapping, so it is bound separately.
+     * It is only available on Windows 10 1607+; older systems fall back to the default 96 DPI.
+     */
+    private interface User32Dpi extends com.sun.jna.win32.StdCallLibrary {
+        User32Dpi INSTANCE = com.sun.jna.Native.load("user32", User32Dpi.class,
+                com.sun.jna.win32.W32APIOptions.DEFAULT_OPTIONS);
+
+        int GetDpiForWindow(WinDef.HWND hwnd);
+    }
+
+    public static final int DEFAULT_DPI = 96;
+
     public static volatile double cachedWebviewHeight = 0;
 
     // Win32 style / SetWindowPos constants
@@ -162,6 +175,61 @@ public final class NativeWindowUtils {
             User32.INSTANCE.ShowWindow(hwnd, visible ? WinUser.SW_SHOWNOACTIVATE : WinUser.SW_HIDE);
         } catch (Exception e) {
             log.warn("ShowWindow failed", e);
+        }
+    }
+
+    /**
+     * Returns the client area size of a window in physical pixels, or {@code null}
+     * if the handle is not a live window.
+     */
+    public static int[] getClientSize(long windowHandle) {
+        if (!SystemUtils.isWindows() || windowHandle == 0) {
+            return null;
+        }
+        try {
+            var hwnd = new WinDef.HWND(new Pointer(windowHandle));
+            if (!User32.INSTANCE.IsWindow(hwnd)) {
+                return null;
+            }
+            var rect = new WinDef.RECT();
+            if (!User32.INSTANCE.GetClientRect(hwnd, rect)) {
+                return null;
+            }
+            return new int[]{rect.right - rect.left, rect.bottom - rect.top};
+        } catch (Throwable e) {
+            log.debug("GetClientRect failed", e);
+            return null;
+        }
+    }
+
+    /**
+     * DPI of the monitor the window currently lives on (96 = 100% scale).
+     */
+    public static int getWindowDpi(long windowHandle) {
+        if (!SystemUtils.isWindows() || windowHandle == 0) {
+            return DEFAULT_DPI;
+        }
+        try {
+            var dpi = User32Dpi.INSTANCE.GetDpiForWindow(new WinDef.HWND(new Pointer(windowHandle)));
+            return dpi > 0 ? dpi : DEFAULT_DPI;
+        } catch (Throwable e) {
+            return DEFAULT_DPI;
+        }
+    }
+
+    /**
+     * True when the given window is already a child of the given parent,
+     * so the (expensive) style rewrite in {@link #setParent} can be skipped.
+     */
+    public static boolean isChildOf(long childHandle, long parentHandle) {
+        if (!SystemUtils.isWindows() || childHandle == 0 || parentHandle == 0) {
+            return false;
+        }
+        try {
+            var current = User32.INSTANCE.GetParent(new WinDef.HWND(new Pointer(childHandle)));
+            return current != null && Pointer.nativeValue(current.getPointer()) == parentHandle;
+        } catch (Throwable e) {
+            return false;
         }
     }
 }
